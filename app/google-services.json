@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "640867640781",
+    "project_id": "ocrandroidproject",
+    "storage_bucket": "ocrandroidproject.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:640867640781:android:3ca24621a72bbc260c1084",
+        "android_client_info": {
+          "package_name": "com.t2h.ocr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCiEC3ISStPPMuY_36AiRrd_3YDZsTnxHI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
