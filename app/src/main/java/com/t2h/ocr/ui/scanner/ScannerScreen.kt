@@ -1,5 +1,6 @@
 package com.t2h.ocr.ui.scanner
 
+import android.graphics.Bitmap
 import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
@@ -7,11 +8,11 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -22,13 +23,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.mlkit.vision.text.Text as VisionText
 
 @Composable
 fun ScannerScreen(
-    viewModel: ScannerViewModel = viewModel()
+    viewModel: ScannerViewModel = viewModel(),
+    onTextCaptured: (VisionText, Bitmap) -> Unit
 ) {
     val context = LocalContext.current
     val detectedText by viewModel.detectedText.collectAsState()
+    var previewView: PreviewView? by remember { mutableStateOf(null) }
 
     val controller = remember {
         LifecycleCameraController(context).apply {
@@ -54,6 +58,7 @@ fun ScannerScreen(
             factory = { ctx ->
                 PreviewView(ctx).apply {
                     this.controller = controller
+                    previewView = this
                 }
             },
             modifier = Modifier.fillMaxSize()
@@ -71,5 +76,22 @@ fun ScannerScreen(
                 }
             }
         }
+
+        Button(
+            onClick = {
+                val bitmap = previewView?.bitmap
+                val text = detectedText
+                if (bitmap != null && text != null) {
+                    onTextCaptured(text, bitmap)
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 48.dp),
+            enabled = detectedText != null
+        ) {
+            Text("Capture Text")
+        }
     }
 }
+
