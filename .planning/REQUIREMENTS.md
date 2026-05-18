@@ -3,29 +3,29 @@
 ## 1. Functional Requirements
 
 ### 1.1 Document Scanning & OCR
-- **REQ-1.1.1:** Real-time text recognition using Google ML Kit.
-- **REQ-1.1.2:** Camera integration with live preview and auto-capture capabilities.
-- **REQ-1.1.3:** Support for image selection from the device gallery.
-- **REQ-1.1.4:** Visual feedback for detected text (bounding boxes) during scanning.
-- **REQ-1.1.5:** Text extraction and basic editing of extracted text.
+- [x] **REQ-1.1.1:** Real-time text recognition using Google ML Kit.
+- [x] **REQ-1.1.2:** Camera integration with live preview and auto-capture capabilities.
+- [ ] **REQ-1.1.3:** Support for image selection from the device gallery.
+- [x] **REQ-1.1.4:** Visual feedback for detected text (bounding boxes) during scanning.
+- [x] **REQ-1.1.5:** Text extraction and basic editing of extracted text.
 
 ### 1.2 PDF Generation
-- **REQ-1.2.1:** Generation of searchable PDF files from extracted text.
-- **REQ-1.2.2:** Support for multi-page PDF documents.
-- **REQ-1.2.3:** Standard PDF layout with text wrapping and basic formatting.
+- [x] **REQ-1.2.1:** Generation of searchable PDF files from extracted text.
+- [ ] **REQ-1.2.2:** Support for multi-page PDF documents.
+- [ ] **REQ-1.2.3:** Standard PDF layout with text wrapping and basic formatting.
 
 ### 1.3 Synchronization & Security
-- **REQ-1.3.1:** User authentication via Firebase (Email/Password or Social).
-- **REQ-1.3.2:** Real-time synchronization of scan history and metadata using Cloud Firestore.
-- **REQ-1.3.3:** Secure storage of PDF documents in Firebase Cloud Storage.
-- **REQ-1.3.4:** Data isolation: users can only access their own documents.
-- **REQ-1.3.5:** Offline-first support: users can scan and edit documents without an internet connection, with sync occurring upon reconnection.
+- [ ] **REQ-1.3.1:** User authentication via Firebase (Email/Password or Social).
+- [ ] **REQ-1.3.2:** Real-time synchronization of scan history and metadata using Cloud Firestore.
+- [ ] **REQ-1.3.3:** Secure storage of PDF documents in Firebase Cloud Storage.
+- [ ] **REQ-1.3.4:** Data isolation: users can only access their own documents.
+- [x] **REQ-1.3.5:** Offline-first support: users can scan and edit documents without an internet connection, with sync occurring upon reconnection.
 
 ### 1.4 User Interface
-- **REQ-1.4.1:** Modern "Bento Grid" home screen for managing recent scans.
-- **REQ-1.4.2:** Intuitive scanner interface with clear feedback and controls.
-- **REQ-1.4.3:** Support for Material 3 Dynamic Colors.
-- **REQ-1.4.4:** Dark mode and light mode support.
+- [ ] **REQ-1.4.1:** Modern "Bento Grid" home screen for managing recent scans.
+- [x] **REQ-1.4.2:** Intuitive scanner interface with clear feedback and controls.
+- [x] **REQ-1.4.3:** Support for Material 3 Dynamic Colors.
+- [x] **REQ-1.4.4:** Dark mode and light mode support.
 
 ## 2. Non-Functional Requirements
 
