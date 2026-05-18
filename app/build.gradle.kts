@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.services)
+    kotlin("plugin.serialization") version "2.0.21"
 }
 
 android {
@@ -62,6 +63,16 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-firestore")
-    implementation("com.google.mlkit:text-recognition:16.0.0")
 
+    // CameraX
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.androidx.camera.mlkit.vision)
+
+    // ML Kit
+    implementation(libs.mlkit.text.recognition)
+
+    // Serialization
+    implementation(libs.kotlinx.serialization.json)
 }
