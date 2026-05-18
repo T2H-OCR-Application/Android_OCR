@@ -7,6 +7,7 @@ val PurpleGrey80 = Color(0xFFCCC2DC)
 val Pink80 = Color(0xFFEFB8C8)
 
 val DeepBlue = Color(0xFF003366)
+val DeepBlueLight = Color(0xFF6699CC) // Lighter blue for Dark Mode primary
 val DeepBlueSecondary = Color(0xFF4D7094) // Complementary secondary
 val DeepBlueTertiary = Color(0xFF7A94B0) // Complementary tertiary
 

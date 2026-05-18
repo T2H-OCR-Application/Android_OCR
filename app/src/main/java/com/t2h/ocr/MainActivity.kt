@@ -9,6 +9,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.with
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -32,6 +37,7 @@ sealed class Screen {
 }
 
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalAnimationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -64,38 +70,45 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    when (val screen = currentScreen) {
-                        Screen.Permission -> {
-                            CameraPermissionRationale(
-                                onGrantClick = {
-                                    permissionLauncher.launch(Manifest.permission.CAMERA)
-                                },
-                                onDismissClick = {
-                                    // In a real app, we might show a message or close the app
-                                }
-                            )
+                    AnimatedContent(
+                        targetState = currentScreen,
+                        transitionSpec = {
+                            fadeIn() with fadeOut()
                         }
+                    ) { screen ->
+                        when (screen) {
+                            Screen.Permission -> {
+                                CameraPermissionRationale(
+                                    onGrantClick = {
+                                        permissionLauncher.launch(Manifest.permission.CAMERA)
+                                    },
+                                    onDismissClick = {
+                                        // In a real app, we might show a message or close the app
+                                    }
+                                )
+                            }
 
-                        Screen.Scanner -> {
-                            ScannerScreen(
-                                onTextCaptured = { text, bitmap ->
-                                    currentScreen = Screen.Results(text, bitmap)
-                                }
-                            )
-                        }
+                            Screen.Scanner -> {
+                                ScannerScreen(
+                                    onTextCaptured = { text, bitmap ->
+                                        currentScreen = Screen.Results(text, bitmap)
+                                    }
+                                )
+                            }
 
-                        is Screen.Results -> {
-                            ResultsScreen(
-                                recognizedText = screen.text,
-                                capturedBitmap = screen.bitmap,
-                                onSaveComplete = {
-                                    // After saving, return to the scanner
-                                    currentScreen = Screen.Scanner
-                                },
-                                onBackClick = {
-                                    currentScreen = Screen.Scanner
-                                }
-                            )
+                            is Screen.Results -> {
+                                ResultsScreen(
+                                    recognizedText = screen.text,
+                                    capturedBitmap = screen.bitmap,
+                                    onSaveComplete = {
+                                        // After saving, return to the scanner
+                                        currentScreen = Screen.Scanner
+                                    },
+                                    onBackClick = {
+                                        currentScreen = Screen.Scanner
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -103,3 +116,4 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
