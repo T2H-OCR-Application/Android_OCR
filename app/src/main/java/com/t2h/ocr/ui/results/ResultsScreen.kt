@@ -9,7 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.google.mlkit.vision.text.Text
+import com.google.mlkit.vision.text.Text as VisionText
 import com.t2h.ocr.data.local.JsonStorage
 import com.t2h.ocr.data.models.ScanMetadata
 import com.t2h.ocr.domain.ocr.PdfGenerator
@@ -23,7 +23,7 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResultsScreen(
-    recognizedText: Text,
+    recognizedText: VisionText,
     capturedBitmap: Bitmap,
     onSaveComplete: () -> Unit,
     onBackClick: () -> Unit
