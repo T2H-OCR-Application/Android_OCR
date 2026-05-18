@@ -6,9 +6,9 @@
 **Requirements:** REQ-1.1.1, REQ-1.1.2, REQ-1.1.4, REQ-1.1.5, REQ-1.2.1, REQ-1.3.5, REQ-1.4.2, REQ-1.4.3, REQ-1.4.4
 
 **Plans:** 4 plans
-- [ ] 01-01-PLAN.md — Foundation & Branding (Setup theme, dependencies, and permission rationale)
-- [ ] 01-02-PLAN.md — Real-time OCR Scanner (CameraX + ML Kit integration with visual feedback)
-- [ ] 01-03-PLAN.md — PDF Generation & Persistence (Searchable PDF logic and local JSON storage)
+- [x] 01-01-PLAN.md — Foundation & Branding (Setup theme, dependencies, and permission rationale)
+- [x] 01-02-PLAN.md — Real-time OCR Scanner (CameraX + ML Kit integration with visual feedback)
+- [x] 01-03-PLAN.md — PDF Generation & Persistence (Searchable PDF logic and local JSON storage)
 - [ ] 01-04-PLAN.md — Final Verification & UX Polish (Automated tests and theme refinement)
 
 ## Phase 2: Firebase Integration & Synchronization
