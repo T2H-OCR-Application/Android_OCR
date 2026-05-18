@@ -1,11 +1,15 @@
 # Roadmap: Android OCR
 
 ## Phase 1: Project Foundation & Core OCR (MVP)
-- [ ] **Task 1.1:** Initialize project structure and set up dependencies (Compose, CameraX, ML Kit).
-- [ ] **Task 1.2:** Implement Camera Preview with ML Kit Text Recognition integration.
-- [ ] **Task 1.3:** Create basic OCR results screen (Text display and editing).
-- [ ] **Task 1.4:** Implement basic single-page PDF generation using native API.
-- [ ] **Task 1.5:** Create simple local storage for scans (Room or basic file storage).
+**Goal:** Establish the project foundation, implement core OCR scanning with CameraX and ML Kit, and enable basic searchable PDF generation with local history.
+
+**Requirements:** REQ-1.1.1, REQ-1.1.2, REQ-1.1.4, REQ-1.1.5, REQ-1.2.1, REQ-1.3.5, REQ-1.4.2, REQ-1.4.3, REQ-1.4.4
+
+**Plans:** 4 plans
+- [ ] 01-01-PLAN.md — Foundation & Branding (Setup theme, dependencies, and permission rationale)
+- [ ] 01-02-PLAN.md — Real-time OCR Scanner (CameraX + ML Kit integration with visual feedback)
+- [ ] 01-03-PLAN.md — PDF Generation & Persistence (Searchable PDF logic and local JSON storage)
+- [ ] 01-04-PLAN.md — Final Verification & UX Polish (Automated tests and theme refinement)
 
 ## Phase 2: Firebase Integration & Synchronization
 - [ ] **Task 2.1:** Integrate Firebase Authentication (Google/Email).
