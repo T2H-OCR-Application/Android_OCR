@@ -1,6 +1,7 @@
 package com.t2h.ocr.ui.scanner
 
 import android.graphics.Bitmap
+import androidx.camera.core.CameraSelector
 import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
@@ -22,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.mlkit.vision.text.Text as VisionText
 
@@ -34,9 +36,11 @@ fun ScannerScreen(
     val detectedText by viewModel.detectedText.collectAsState()
     var previewView: PreviewView? by remember { mutableStateOf(null) }
 
-    val controller = remember {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val controller = remember(context, lifecycleOwner) {
         LifecycleCameraController(context).apply {
-            setEnabledUseCases(CameraController.IMAGE_ANALYSIS)
+            cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+            bindToLifecycle(lifecycleOwner)
         }
     }
 
@@ -50,13 +54,14 @@ fun ScannerScreen(
             val visionText = result.getValue(viewModel.recognizer)
             viewModel.onTextDetected(visionText)
         }
-        controller.setMlKitAnalyzer(executor, analyzer)
+        controller.setImageAnalysisAnalyzer(executor, analyzer)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
             factory = { ctx ->
                 PreviewView(ctx).apply {
+                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
                     this.controller = controller
                     previewView = this
                 }
