@@ -1,7 +1,7 @@
 # Project State: Android OCR
 
-## Current Phase: Phase 1: Project Foundation & Core OCR (MVP)
-## Status: Wave 3 complete, performing final verification (Wave 4)
+## Current Phase: Phase 2: Firebase Integration & Synchronization
+## Status: Phase 1 Complete and Verified. Ready for Phase 2 Planning.
 
 ## Recent Milestones
 - [x] Initial project mapping completed.
@@ -10,9 +10,8 @@
 - [x] Wave 1: Foundation & Branding (Deep Blue theme, permissions UI).
 - [x] Wave 2: Real-time OCR Scanner (CameraX + ML Kit integration).
 - [x] Wave 3: Searchable PDF & Local Persistence (PdfDocument + JsonStorage).
-
-## Active Tasks
-- [ ] Task 1.4: Final verification, UI polish, and performance audit.
+- [x] Wave 4: Final verification, UI polish, and performance audit.
+- [x] Phase 1 UAT: Verified all core features with the user.
 
 ## Key Decisions
 - **OCR Engine:** Google ML Kit (On-device) for speed and cost-effectiveness.
