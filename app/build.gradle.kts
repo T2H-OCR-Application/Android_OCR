@@ -1,24 +1,18 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    //  Firebase
-    id("com.android.application")
-    id("com.google.gms.google-services")
-    id("org.jetbrains.kotlin.android")
+    alias(libs.plugins.google.services)
 }
 
 android {
     namespace = "com.t2h.ocr"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.t2h.ocr"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -37,6 +31,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+    kotlinOptions {
+        jvmTarget = "11"
     }
     buildFeatures {
         compose = true
@@ -60,11 +57,11 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     //  Firebase
-    implementation(platform("com.google.firebase:firebase-bom:34.13.0"))
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-analytics")
-    implementation("com.google.firebase:firebase-auth-ktx")
-    implementation("com.google.firebase:firebase-storage-ktx")
-    implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-storage")
+    implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.mlkit:text-recognition:16.0.0")
 
 }
