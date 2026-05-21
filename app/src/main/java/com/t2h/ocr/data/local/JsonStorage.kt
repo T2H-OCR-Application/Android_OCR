@@ -1,10 +1,12 @@
 package com.t2h.ocr.data.local
 
 import android.content.Context
+import androidx.core.util.AtomicFile
 import com.t2h.ocr.data.models.ScanMetadata
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.io.FileOutputStream
 
 /**
  * Handles local persistence of scan metadata using JSON serialization.
@@ -18,13 +20,18 @@ class JsonStorage(private val context: Context) {
     }
 
     /**
-     * Saves the entire list of scans to the local JSON file.
+     * Saves the entire list of scans to the local JSON file atomically.
      */
     fun saveScans(scans: List<ScanMetadata>) {
+        val atomicFile = AtomicFile(file)
+        var stream: FileOutputStream? = null
         try {
             val jsonString = json.encodeToString(scans)
-            file.writeText(jsonString)
+            stream = atomicFile.startWrite()
+            stream?.write(jsonString.toByteArray())
+            atomicFile.finishWrite(stream)
         } catch (e: Exception) {
+            atomicFile.failWrite(stream)
             // In a real app, we might want to log this to a crash reporting tool
             e.printStackTrace()
         }
