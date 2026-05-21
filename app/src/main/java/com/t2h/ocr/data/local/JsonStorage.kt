@@ -53,4 +53,14 @@ class JsonStorage(private val context: Context) {
         currentScans.add(0, scan) // Newest first
         saveScans(currentScans)
     }
+
+    /**
+     * Updates an existing scan in the storage.
+     */
+    fun updateScan(updatedScan: ScanMetadata) {
+        val currentScans = loadScans().map {
+            if (it.id == updatedScan.id) updatedScan else it
+        }
+        saveScans(currentScans)
+    }
 }
