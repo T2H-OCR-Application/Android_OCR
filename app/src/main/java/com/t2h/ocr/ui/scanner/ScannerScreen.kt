@@ -10,7 +10,11 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,7 +34,8 @@ import com.google.mlkit.vision.text.Text as VisionText
 @Composable
 fun ScannerScreen(
     viewModel: ScannerViewModel = viewModel(),
-    onTextCaptured: (VisionText, Bitmap) -> Unit
+    onTextCaptured: (VisionText, Bitmap) -> Unit,
+    onProfileClick: () -> Unit
 ) {
     val context = LocalContext.current
     val detectedText by viewModel.detectedText.collectAsState()
@@ -96,6 +101,19 @@ fun ScannerScreen(
             enabled = detectedText != null
         ) {
             Text("Capture Text")
+        }
+
+        IconButton(
+            onClick = onProfileClick,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 48.dp, end = 16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.AccountCircle,
+                contentDescription = "Profile",
+                tint = Color.White
+            )
         }
     }
 }
