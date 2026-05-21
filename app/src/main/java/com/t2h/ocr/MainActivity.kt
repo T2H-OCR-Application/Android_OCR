@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.text.Text as VisionText
+import com.t2h.ocr.data.auth.AuthRepository
 import com.t2h.ocr.ui.components.CameraPermissionRationale
 import com.t2h.ocr.ui.results.ResultsScreen
 import com.t2h.ocr.ui.scanner.ScannerScreen
@@ -37,9 +38,16 @@ sealed class Screen {
 }
 
 class MainActivity : ComponentActivity() {
+    private lateinit var authRepository: AuthRepository
+
     @OptIn(ExperimentalAnimationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize Firebase Auth anonymously
+        authRepository = AuthRepository()
+        authRepository.signInAnonymously()
+
         enableEdgeToEdge()
         setContent {
             AndroidOCRTheme {
