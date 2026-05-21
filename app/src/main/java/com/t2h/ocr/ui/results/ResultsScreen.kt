@@ -9,9 +9,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.google.mlkit.vision.text.Text as VisionText
+import androidx.work.*
 import com.t2h.ocr.data.local.JsonStorage
 import com.t2h.ocr.data.models.ScanMetadata
+import com.t2h.ocr.data.sync.SyncWorker
 import com.t2h.ocr.domain.ocr.PdfGenerator
 import java.io.File
 import java.io.FileOutputStream
@@ -90,6 +91,22 @@ fun ResultsScreen(
                         language = "en"
                     )
                     jsonStorage.addScan(metadata)
+
+                    // 4. Enqueue SyncWorker
+                    val constraints = Constraints.Builder()
+                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                        .build()
+
+                    val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
+                        .setConstraints(constraints)
+                        .setInputData(workDataOf("scan_id" to id))
+                        .build()
+
+                    WorkManager.getInstance(context).enqueueUniqueWork(
+                        "sync_$id",
+                        ExistingWorkPolicy.REPLACE,
+                        syncRequest
+                    )
                     
                     onSaveComplete()
                 },
