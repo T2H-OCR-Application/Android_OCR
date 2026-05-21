@@ -14,6 +14,7 @@ object PdfGenerator {
     fun generateSearchablePdf(
         bitmap: Bitmap,
         visionText: Text,
+        editedText: String,
         outputStream: OutputStream
     ) {
         val pdfDocument = PdfDocument()
@@ -31,23 +32,37 @@ object PdfGenerator {
                 isAntiAlias = true
             }
 
+            // Simple line-matching to attempt fixing CR-01
+            val editedLines = editedText.split("\n").filter { it.isNotBlank() }
+            val originalLines = visionText.textBlocks.flatMap { it.lines }
+            
+            val useEdited = editedLines.size == originalLines.size
+
+            var lineIndex = 0
             for (block in visionText.textBlocks) {
                 for (line in block.lines) {
-                    for (element in line.elements) {
-                        val rect = element.boundingBox ?: continue
-                        
-                        // Adjust text size to match the bounding box height
-                        paint.textSize = rect.height().toFloat()
-                        
-                        // Draw text at the position of the element
-                        // Note: drawText uses the baseline, so bottom is a decent approximation
-                        canvas.drawText(
-                            element.text,
-                            rect.left.toFloat(),
-                            rect.bottom.toFloat(),
-                            paint
-                        )
+                    val textToDraw = if (useEdited && lineIndex < editedLines.size) {
+                        editedLines[lineIndex]
+                    } else {
+                        line.text
                     }
+                    lineIndex++
+
+                    val rect = line.boundingBox ?: continue
+                    
+                    // Adjust text size to match the bounding box height
+                    paint.textSize = rect.height().toFloat()
+                    
+                    // Calculate baseline using FontMetrics for WR-01
+                    val metrics = paint.fontMetrics
+                    val baseline = rect.bottom.toFloat() - metrics.descent
+
+                    canvas.drawText(
+                        textToDraw,
+                        rect.left.toFloat(),
+                        baseline,
+                        paint
+                    )
                 }
             }
 
