@@ -10,10 +10,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.work.*
+import com.google.mlkit.vision.text.Text as VisionText
 import com.t2h.ocr.data.local.JsonStorage
 import com.t2h.ocr.data.models.ScanMetadata
 import com.t2h.ocr.data.sync.SyncWorker
 import com.t2h.ocr.domain.ocr.PdfGenerator
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.util.*
@@ -30,6 +34,7 @@ fun ResultsScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var editedText by remember { mutableStateOf(recognizedText.text) }
     val jsonStorage = remember { JsonStorage(context) }
 
@@ -64,51 +69,55 @@ fun ResultsScreen(
 
             Button(
                 onClick = {
-                    // Implementation of saving logic
-                    val id = UUID.randomUUID().toString()
-                    val timestamp = System.currentTimeMillis()
-                    
-                    // 1. Save Image to app-private storage
-                    val imageFile = File(context.filesDir, "image_$id.jpg")
-                    FileOutputStream(imageFile).use { out ->
-                        capturedBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                    scope.launch(Dispatchers.IO) {
+                        // Implementation of saving logic
+                        val id = UUID.randomUUID().toString()
+                        val timestamp = System.currentTimeMillis()
+                        
+                        // 1. Save Image to app-private storage
+                        val imageFile = File(context.filesDir, "image_$id.jpg")
+                        FileOutputStream(imageFile).use { out ->
+                            capturedBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                        }
+
+                        // 2. Generate searchable PDF
+                        val pdfFile = File(context.filesDir, "doc_$id.pdf")
+                        FileOutputStream(pdfFile).use { out ->
+                            PdfGenerator.generateSearchablePdf(capturedBitmap, recognizedText, out)
+                        }
+
+                        // 3. Persist metadata locally
+                        val metadata = ScanMetadata(
+                            id = id,
+                            title = "Scan ${Date(timestamp)}",
+                            timestamp = timestamp,
+                            ocrText = editedText,
+                            imagePath = imageFile.absolutePath,
+                            pdfPath = pdfFile.absolutePath,
+                            language = "en"
+                        )
+                        jsonStorage.addScan(metadata)
+
+                        // 4. Enqueue SyncWorker
+                        val constraints = Constraints.Builder()
+                            .setRequiredNetworkType(NetworkType.CONNECTED)
+                            .build()
+
+                        val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
+                            .setConstraints(constraints)
+                            .setInputData(workDataOf("scan_id" to id))
+                            .build()
+
+                        WorkManager.getInstance(context).enqueueUniqueWork(
+                            "sync_$id",
+                            ExistingWorkPolicy.REPLACE,
+                            syncRequest
+                        )
+                        
+                        withContext(Dispatchers.Main) {
+                            onSaveComplete()
+                        }
                     }
-
-                    // 2. Generate searchable PDF
-                    val pdfFile = File(context.filesDir, "doc_$id.pdf")
-                    FileOutputStream(pdfFile).use { out ->
-                        PdfGenerator.generateSearchablePdf(capturedBitmap, recognizedText, out)
-                    }
-
-                    // 3. Persist metadata locally
-                    val metadata = ScanMetadata(
-                        id = id,
-                        title = "Scan ${Date(timestamp)}",
-                        timestamp = timestamp,
-                        ocrText = editedText,
-                        imagePath = imageFile.absolutePath,
-                        pdfPath = pdfFile.absolutePath,
-                        language = "en"
-                    )
-                    jsonStorage.addScan(metadata)
-
-                    // 4. Enqueue SyncWorker
-                    val constraints = Constraints.Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build()
-
-                    val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
-                        .setConstraints(constraints)
-                        .setInputData(workDataOf("scan_id" to id))
-                        .build()
-
-                    WorkManager.getInstance(context).enqueueUniqueWork(
-                        "sync_$id",
-                        ExistingWorkPolicy.REPLACE,
-                        syncRequest
-                    )
-                    
-                    onSaveComplete()
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {

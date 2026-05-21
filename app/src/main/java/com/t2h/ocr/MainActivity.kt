@@ -9,17 +9,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.with
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.animation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.text.Text as VisionText
 import com.t2h.ocr.data.auth.AuthRepository
@@ -33,6 +30,7 @@ import com.t2h.ocr.ui.theme.AndroidOCRTheme
  * Main entry point of the application. Manages high-level navigation between screens.
  */
 sealed class Screen {
+    object Loading : Screen()
     object Permission : Screen()
     object Scanner : Screen()
     object Profile : Screen()
@@ -58,9 +56,14 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val context = LocalContext.current
-                    var currentScreen by remember {
-                        mutableStateOf(
-                            if (ContextCompat.checkSelfPermission(
+                    val currentUser by authRepository.currentUser.collectAsState()
+                    
+                    var currentScreen by remember { mutableStateOf<Screen>(Screen.Loading) }
+
+                    // Handle initial navigation and auth state
+                    LaunchedEffect(currentUser) {
+                        if (currentUser != null && currentScreen == Screen.Loading) {
+                            currentScreen = if (ContextCompat.checkSelfPermission(
                                     context,
                                     Manifest.permission.CAMERA
                                 ) == PackageManager.PERMISSION_GRANTED
@@ -69,7 +72,7 @@ class MainActivity : ComponentActivity() {
                             } else {
                                 Screen.Permission
                             }
-                        )
+                        }
                     }
 
                     val permissionLauncher = rememberLauncherForActivityResult(
@@ -87,6 +90,19 @@ class MainActivity : ComponentActivity() {
                         }
                     ) { screen ->
                         when (screen) {
+                            Screen.Loading -> {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        CircularProgressIndicator()
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text("Initializing session...")
+                                    }
+                                }
+                            }
+
                             Screen.Permission -> {
                                 CameraPermissionRationale(
                                     onGrantClick = {
