@@ -1,26 +1,17 @@
 package com.t2h.ocr.ui.results
 
-import android.graphics.Bitmap
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.work.*
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.mlkit.vision.text.Text as VisionText
-import com.t2h.ocr.data.local.JsonStorage
-import com.t2h.ocr.data.models.ScanMetadata
-import com.t2h.ocr.data.sync.SyncWorker
-import com.t2h.ocr.domain.ocr.PdfGenerator
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
-import java.util.*
 
 /**
  * Screen where users can review and edit recognized text before saving it as a PDF.
@@ -28,15 +19,15 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResultsScreen(
+    viewModel: ResultsViewModel = viewModel(),
     recognizedText: VisionText,
-    capturedBitmap: Bitmap,
+    imagePath: String,
     onSaveComplete: () -> Unit,
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     var editedText by remember { mutableStateOf(recognizedText.text) }
-    val jsonStorage = remember { JsonStorage(context) }
+    val isSaving by viewModel.isSaving.collectAsState()
 
     Scaffold(
         topBar = {
@@ -50,78 +41,58 @@ fun ResultsScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .padding(16.dp)
-                .fillMaxSize()
-        ) {
-            TextField(
-                value = editedText,
-                onValueChange = { editedText = it },
+        Box(modifier = Modifier.padding(padding)) {
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                label = { Text("Recognized Text") }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    scope.launch(Dispatchers.IO) {
-                        // Implementation of saving logic
-                        val id = UUID.randomUUID().toString()
-                        val timestamp = System.currentTimeMillis()
-                        
-                        // 1. Save Image to app-private storage
-                        val imageFile = File(context.filesDir, "image_$id.jpg")
-                        FileOutputStream(imageFile).use { out ->
-                            capturedBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
-                        }
-
-                        // 2. Generate searchable PDF
-                        val pdfFile = File(context.filesDir, "doc_$id.pdf")
-                        FileOutputStream(pdfFile).use { out ->
-                            PdfGenerator.generateSearchablePdf(capturedBitmap, recognizedText, out)
-                        }
-
-                        // 3. Persist metadata locally
-                        val metadata = ScanMetadata(
-                            id = id,
-                            title = "Scan ${Date(timestamp)}",
-                            timestamp = timestamp,
-                            ocrText = editedText,
-                            imagePath = imageFile.absolutePath,
-                            pdfPath = pdfFile.absolutePath,
-                            language = "en"
-                        )
-                        jsonStorage.addScan(metadata)
-
-                        // 4. Enqueue SyncWorker
-                        val constraints = Constraints.Builder()
-                            .setRequiredNetworkType(NetworkType.CONNECTED)
-                            .build()
-
-                        val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
-                            .setConstraints(constraints)
-                            .setInputData(workDataOf("scan_id" to id))
-                            .build()
-
-                        WorkManager.getInstance(context).enqueueUniqueWork(
-                            "sync_$id",
-                            ExistingWorkPolicy.REPLACE,
-                            syncRequest
-                        )
-                        
-                        withContext(Dispatchers.Main) {
-                            onSaveComplete()
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
+                    .padding(16.dp)
+                    .fillMaxSize()
             ) {
-                Text("Save as PDF")
+                TextField(
+                    value = editedText,
+                    onValueChange = { editedText = it },
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    label = { Text("Recognized Text") },
+                    enabled = !isSaving
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        viewModel.saveScan(
+                            context = context,
+                            imagePath = imagePath,
+                            recognizedText = recognizedText,
+                            editedText = editedText,
+                            onComplete = onSaveComplete
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSaving
+                ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Save as PDF")
+                    }
+                }
+            }
+            
+            if (isSaving) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color.Black.copy(alpha = 0.3f)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
             }
         }
     }

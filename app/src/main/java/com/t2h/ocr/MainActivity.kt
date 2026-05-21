@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.google.firebase.auth.FirebaseAuth
 import com.google.mlkit.vision.text.Text as VisionText
 import com.t2h.ocr.data.auth.AuthRepository
 import com.t2h.ocr.ui.components.CameraPermissionRationale
@@ -34,7 +35,7 @@ sealed class Screen {
     object Permission : Screen()
     object Scanner : Screen()
     object Profile : Screen()
-    data class Results(val text: VisionText, val bitmap: Bitmap) : Screen()
+    data class Results(val text: VisionText, val imagePath: String) : Screen()
 }
 
 class MainActivity : ComponentActivity() {
@@ -56,7 +57,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val context = LocalContext.current
-                    val currentUser by authRepository.currentUser.collectAsState()
+                    val currentUser by authRepository.currentUser.collectAsState(initial = FirebaseAuth.getInstance().currentUser)
                     
                     var currentScreen by remember { mutableStateOf<Screen>(Screen.Loading) }
 
@@ -116,8 +117,8 @@ class MainActivity : ComponentActivity() {
 
                             Screen.Scanner -> {
                                 ScannerScreen(
-                                    onTextCaptured = { text, bitmap ->
-                                        currentScreen = Screen.Results(text, bitmap)
+                                    onTextCaptured = { text, path ->
+                                        currentScreen = Screen.Results(text, path)
                                     },
                                     onProfileClick = {
                                         currentScreen = Screen.Profile
@@ -137,7 +138,7 @@ class MainActivity : ComponentActivity() {
                             is Screen.Results -> {
                                 ResultsScreen(
                                     recognizedText = screen.text,
-                                    capturedBitmap = screen.bitmap,
+                                    imagePath = screen.imagePath,
                                     onSaveComplete = {
                                         // After saving, return to the scanner
                                         currentScreen = Screen.Scanner

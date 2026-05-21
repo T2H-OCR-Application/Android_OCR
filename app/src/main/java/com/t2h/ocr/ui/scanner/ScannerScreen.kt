@@ -7,15 +7,10 @@ import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,11 +25,14 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.mlkit.vision.text.Text as VisionText
+import java.io.File
+import java.io.FileOutputStream
+import java.util.UUID
 
 @Composable
 fun ScannerScreen(
     viewModel: ScannerViewModel = viewModel(),
-    onTextCaptured: (VisionText, Bitmap) -> Unit,
+    onTextCaptured: (VisionText, String) -> Unit,
     onProfileClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -92,7 +90,11 @@ fun ScannerScreen(
                 val bitmap = previewView?.bitmap
                 val text = detectedText
                 if (bitmap != null && text != null) {
-                    onTextCaptured(text, bitmap)
+                    val tempFile = File(context.cacheDir, "temp_capture_${UUID.randomUUID()}.jpg")
+                    FileOutputStream(tempFile).use { out ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                    }
+                    onTextCaptured(text, tempFile.absolutePath)
                 }
             },
             modifier = Modifier
@@ -107,7 +109,8 @@ fun ScannerScreen(
             onClick = onProfileClick,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 48.dp, end = 16.dp)
+                .statusBarsPadding()
+                .padding(top = 16.dp, end = 16.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.AccountCircle,
@@ -117,4 +120,3 @@ fun ScannerScreen(
         }
     }
 }
-

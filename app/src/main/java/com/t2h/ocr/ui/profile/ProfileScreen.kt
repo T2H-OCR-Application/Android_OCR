@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.google.firebase.auth.FirebaseAuth
 import com.t2h.ocr.R
 import com.t2h.ocr.data.auth.AuthRepository
 
@@ -27,7 +28,7 @@ fun ProfileScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val currentUser by authRepository.currentUser.collectAsState()
+    val currentUser by authRepository.currentUser.collectAsState(initial = FirebaseAuth.getInstance().currentUser)
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
