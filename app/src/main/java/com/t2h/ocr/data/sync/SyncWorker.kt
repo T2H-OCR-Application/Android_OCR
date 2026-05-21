@@ -11,8 +11,10 @@ import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.storage.FirebaseStorage
 import com.t2h.ocr.data.local.JsonStorage
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
 import java.io.File
 
@@ -53,23 +55,44 @@ class SyncWorker(
             storageRef.putFile(Uri.fromFile(pdfFile)).await()
             val downloadUrl = storageRef.downloadUrl.await().toString()
 
-            // 4. Update metadata
-            val updatedScan = scan.copy(
-                isSynced = true,
-                remotePdfUrl = downloadUrl,
-                updatedAt = System.currentTimeMillis()
-            )
+            // 4. Save to Firestore with LWW retry logic
+            var success = false
+            var attempts = 0
+            val maxAttempts = 3
+            var lastUpdatedScan = scan
 
-            // 5. Save to Firestore
-            firestore.collection("users")
-                .document(userId)
-                .collection("scans")
-                .document(scanId)
-                .set(updatedScan)
-                .await()
+            while (attempts < maxAttempts && !success) {
+                try {
+                    attempts++
+                    // Update metadata with fresh timestamp for LWW
+                    lastUpdatedScan = scan.copy(
+                        isSynced = true,
+                        remotePdfUrl = downloadUrl,
+                        updatedAt = System.currentTimeMillis()
+                    )
 
-            // 6. Update local storage
-            jsonStorage.updateScan(updatedScan)
+                    firestore.collection("users")
+                        .document(userId)
+                        .collection("scans")
+                        .document(scanId)
+                        .set(lastUpdatedScan)
+                        .await()
+                    
+                    success = true
+                } catch (e: FirebaseFirestoreException) {
+                    if (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED && attempts < maxAttempts) {
+                        // This could be an LWW failure. Wait and retry with a newer timestamp.
+                        delay(500)
+                        continue
+                    }
+                    throw e
+                }
+            }
+
+            if (!success) return Result.retry()
+
+            // 5. Update local storage
+            jsonStorage.updateScan(lastUpdatedScan)
 
             Result.success()
         } catch (e: Exception) {
