@@ -24,6 +24,7 @@ import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.text.Text as VisionText
 import com.t2h.ocr.data.auth.AuthRepository
 import com.t2h.ocr.ui.components.CameraPermissionRationale
+import com.t2h.ocr.ui.profile.ProfileScreen
 import com.t2h.ocr.ui.results.ResultsScreen
 import com.t2h.ocr.ui.scanner.ScannerScreen
 import com.t2h.ocr.ui.theme.AndroidOCRTheme
@@ -34,6 +35,7 @@ import com.t2h.ocr.ui.theme.AndroidOCRTheme
 sealed class Screen {
     object Permission : Screen()
     object Scanner : Screen()
+    object Profile : Screen()
     data class Results(val text: VisionText, val bitmap: Bitmap) : Screen()
 }
 
@@ -100,6 +102,18 @@ class MainActivity : ComponentActivity() {
                                 ScannerScreen(
                                     onTextCaptured = { text, bitmap ->
                                         currentScreen = Screen.Results(text, bitmap)
+                                    },
+                                    onProfileClick = {
+                                        currentScreen = Screen.Profile
+                                    }
+                                )
+                            }
+
+                            Screen.Profile -> {
+                                ProfileScreen(
+                                    authRepository = authRepository,
+                                    onNavigateBack = {
+                                        currentScreen = Screen.Scanner
                                     }
                                 )
                             }
