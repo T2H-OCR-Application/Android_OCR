@@ -4,7 +4,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ServiceInfo
-import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
@@ -13,7 +12,6 @@ import androidx.work.WorkerParameters
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException
-import com.google.firebase.storage.FirebaseStorage
 import com.t2h.ocr.data.local.JsonStorage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
@@ -27,7 +25,7 @@ class SyncWorker(
     private val jsonStorage = JsonStorage(appContext)
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
-    private val storage = FirebaseStorage.getInstance()
+    private val driveUploader = DriveUploader(appContext)
 
     override suspend fun doWork(): Result {
         val scanId = inputData.getString("scan_id") ?: return Result.failure()
@@ -48,13 +46,15 @@ class SyncWorker(
         }
 
         return try {
-            // 3. Upload PDF to Storage
+            // 3. Upload PDF to Google Drive
             val pdfFile = File(scan.pdfPath)
             if (!pdfFile.exists()) return Result.failure()
 
-            val storageRef = storage.reference.child("users/$userId/scans/$scanId.pdf")
-            storageRef.putFile(Uri.fromFile(pdfFile)).await()
-            val downloadUrl = storageRef.downloadUrl.await().toString()
+            val downloadUrl = driveUploader.uploadPdf(pdfFile)
+            if (downloadUrl == null) {
+                // Upload failed or missing Google account
+                return Result.retry()
+            }
 
             // 4. Save to Firestore with LWW retry logic
             var success = false

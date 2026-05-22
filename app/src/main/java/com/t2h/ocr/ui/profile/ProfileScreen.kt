@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import android.widget.Toast
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
@@ -35,28 +36,38 @@ fun ProfileScreen(
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        Log.d("ProfileScreen", "Result received: ${result.resultCode}")
         if (result.resultCode == Activity.RESULT_OK) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)
                 val idToken = account?.idToken
+                Log.d("ProfileScreen", "Google Sign-In successful, idToken present: ${idToken != null}")
                 if (idToken != null) {
                     isLoading = true
+                    errorMessage = null
                     authRepository.linkWithGoogle(idToken) { success ->
                         isLoading = false
-                        if (!success) {
-                            errorMessage = "Failed to link account"
+                        if (success) {
+                            Toast.makeText(context, "Account linked successfully!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            errorMessage = "Failed to link account with Firebase. Check your network or Firebase Console."
                         }
                     }
                 } else {
-                    errorMessage = "Google Sign-In failed: No ID Token"
+                    errorMessage = "Google Sign-In failed: No ID Token returned. This usually means the Web Client ID is incorrect or not for this project."
                 }
             } catch (e: ApiException) {
                 Log.e("ProfileScreen", "Google sign in failed", e)
-                errorMessage = "Google Sign-In failed: ${e.message}"
+                errorMessage = "Google Sign-In failed (Status Code: ${e.statusCode}). Details: ${e.message}"
             }
         } else {
             Log.e("ProfileScreen", "Google sign in cancelled or failed: ${result.resultCode}")
+            if (result.resultCode != Activity.RESULT_CANCELED) {
+                errorMessage = "Google Sign-In failed with result code: ${result.resultCode}"
+            } else {
+                Toast.makeText(context, "Sign-in cancelled", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -109,6 +120,7 @@ fun ProfileScreen(
                             val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                                 .requestIdToken(context.getString(R.string.default_web_client_id))
                                 .requestEmail()
+                                .requestScopes(com.google.android.gms.common.api.Scope(com.google.api.services.drive.DriveScopes.DRIVE_FILE))
                                 .build()
                             val googleSignInClient = GoogleSignIn.getClient(context, gso)
                             launcher.launch(googleSignInClient.signInIntent)

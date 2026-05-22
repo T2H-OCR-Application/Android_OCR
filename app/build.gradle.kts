@@ -39,6 +39,19 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/LICENSE"
+            excludes += "META-INF/LICENSE.txt"
+            excludes += "META-INF/license.txt"
+            excludes += "META-INF/NOTICE"
+            excludes += "META-INF/NOTICE.txt"
+            excludes += "META-INF/notice.txt"
+            excludes += "META-INF/ASL2.0"
+            excludes += "META-INF/*.kotlin_module"
+        }
+    }
 }
 
 dependencies {
@@ -65,8 +78,13 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
-    implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-firestore")
+
+    // Google Drive REST API
+    implementation("com.google.api-client:google-api-client-android:1.34.0")
+    implementation("com.google.api-client:google-api-client-gson:1.34.0")
+    implementation("com.google.apis:google-api-services-drive:v3-rev20240123-2.0.0")
+    implementation("com.google.auth:google-auth-library-oauth2-http:1.20.0")
 
     // CameraX
     implementation(libs.androidx.camera.camera2)

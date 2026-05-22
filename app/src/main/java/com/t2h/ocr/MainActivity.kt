@@ -3,6 +3,7 @@ package com.t2h.ocr
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -76,10 +77,16 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    val permissionsToRequest = mutableListOf(Manifest.permission.CAMERA)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+
                     val permissionLauncher = rememberLauncherForActivityResult(
-                        ActivityResultContracts.RequestPermission()
-                    ) { isGranted ->
-                        if (isGranted) {
+                        ActivityResultContracts.RequestMultiplePermissions()
+                    ) { permissions ->
+                        val cameraGranted = permissions[Manifest.permission.CAMERA] ?: false
+                        if (cameraGranted) {
                             currentScreen = Screen.Scanner
                         }
                     }
@@ -107,7 +114,7 @@ class MainActivity : ComponentActivity() {
                             Screen.Permission -> {
                                 CameraPermissionRationale(
                                     onGrantClick = {
-                                        permissionLauncher.launch(Manifest.permission.CAMERA)
+                                        permissionLauncher.launch(permissionsToRequest.toTypedArray())
                                     },
                                     onDismissClick = {
                                         // In a real app, we might show a message or close the app
