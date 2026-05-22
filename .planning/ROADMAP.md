@@ -19,14 +19,14 @@
 **Plans:** 4 plans
 
 **Wave 1**
-- [ ] 02-01-PLAN.md — Firebase Auth & Anonymous Identity (Silent sign-in on launch)
+- [x] 02-01-PLAN.md — Firebase Auth & Anonymous Identity (Silent sign-in on launch)
 
 **Wave 2 (blocked on Wave 1 completion)**
-- [ ] 02-02-PLAN.md — Profile Screen & Account Linking (Google Sign-In integration)
-- [ ] 02-03-PLAN.md — WorkManager & File-First Sync Pipeline (Automatic background uploads)
+- [x] 02-02-PLAN.md — Profile Screen & Account Linking (Google Sign-In integration)
+- [x] 02-03-PLAN.md — WorkManager & File-First Sync Pipeline (Automatic background uploads)
 
 **Wave 3 (blocked on Wave 2 completion)**
-- [ ] 02-04-PLAN.md — Data Integrity & Rules (Security Rules and conflict resolution)
+- [x] 02-04-PLAN.md — Data Integrity & Rules (Security Rules and conflict resolution)
 
 **Cross-cutting constraints:**
 - "File-First" sync strategy (Storage then Firestore).
@@ -34,11 +34,15 @@
 - Visible background progress via notifications (D-05).
 
 ## Phase 3: Advanced Features & UX Refinement
-- [ ] **Task 3.1:** Implement Multi-page scan and PDF generation.
-- [ ] **Task 3.2:** Develop the "Bento Grid" home screen for document management.
-- [ ] **Task 3.3:** Add search and filter functionality for scan history.
-- [ ] **Task 3.4:** Implement advanced scanner features (Auto-crop, perspective correction).
-- [ ] **Task 3.5:** Refine UI with custom brand identity and animations.
+**Goal:** Transition the OCR MVP into a professional-grade scanner with custom edge detection, bento-grid UI, and high-fidelity PDF generation.
+
+**Requirements:** REQ-1.1.2, REQ-1.4.1, REQ-1.4.2, REQ-1.2.2, REQ-1.2.3
+
+**Plans:** 4 plans
+- [ ] 03-01-PLAN.md — OpenCV Edge Detection (Custom CameraX analyzer for document boundary isolation)
+- [ ] 03-02-PLAN.md — Bento Grid & Deep Search (Dynamic home screen with full-text search and UI tests)
+- [ ] 03-03-PLAN.md — Real-time Overlay & Manual Crop (Live guidance and draggable corner refinement)
+- [ ] 03-04-PLAN.md — Batch Scanning & Clean PDF Rewrite (Multi-page processing and high-fidelity text-only PDFs)
 
 ## Phase 4: Polish, Testing & Deployment
 - [ ] **Task 4.1:** Conduct thorough unit and instrumentation testing.
