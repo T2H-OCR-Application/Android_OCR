@@ -1,24 +1,20 @@
 package com.t2h.ocr.ui.scanner
 
 import androidx.lifecycle.ViewModel
-import com.google.mlkit.vision.text.Text
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.opencv.core.Point
 
 class ScannerViewModel : ViewModel() {
-    val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
-    private val _detectedText = MutableStateFlow<Text?>(null)
-    val detectedText = _detectedText.asStateFlow()
+    private val _quadCoordinates = MutableStateFlow<List<Point>>(emptyList())
+    val quadCoordinates = _quadCoordinates.asStateFlow()
 
-    fun onTextDetected(visionText: Text?) {
-        _detectedText.value = visionText
-    }
+    private val _imageSize = MutableStateFlow<Pair<Int, Int>?>(null)
+    val imageSize = _imageSize.asStateFlow()
 
-    override fun onCleared() {
-        super.onCleared()
-        recognizer.close()
+    fun onQuadDetected(points: List<Point>, width: Int, height: Int) {
+        _quadCoordinates.value = points
+        _imageSize.value = width to height
     }
 }
