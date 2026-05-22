@@ -95,6 +95,9 @@ dependencies {
     // ML Kit
     implementation(libs.mlkit.text.recognition)
 
+    // OpenCV
+    implementation(libs.opencv)
+
     // Serialization
     implementation(libs.kotlinx.serialization.json)
 }
