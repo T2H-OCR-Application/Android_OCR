@@ -9,7 +9,7 @@
 - [x] 01-01-PLAN.md — Foundation & Branding (Setup theme, dependencies, and permission rationale)
 - [x] 01-02-PLAN.md — Real-time OCR Scanner (CameraX + ML Kit integration with visual feedback)
 - [x] 01-03-PLAN.md — PDF Generation & Persistence (Searchable PDF logic and local JSON storage)
-- [ ] 01-04-PLAN.md — Final Verification & UX Polish (Automated tests and theme refinement)
+- [x] 01-04-PLAN.md — Final Verification & UX Polish (Automated tests and theme refinement)
 
 ## Phase 2: Firebase Integration & Synchronization
 **Goal:** Integrate Firebase Authentication, Cloud Firestore for metadata sync, Cloud Storage for PDF files, and use WorkManager for background sync.
@@ -39,13 +39,19 @@
 **Requirements:** REQ-1.1.2, REQ-1.4.1, REQ-1.4.2, REQ-1.2.2, REQ-1.2.3
 
 **Plans:** 4 plans
-- [ ] 03-01-PLAN.md — OpenCV Edge Detection (Custom CameraX analyzer for document boundary isolation)
-- [ ] 03-02-PLAN.md — Bento Grid & Deep Search (Dynamic home screen with full-text search and UI tests)
-- [ ] 03-03-PLAN.md — Real-time Overlay & Manual Crop (Live guidance and draggable corner refinement)
-- [ ] 03-04-PLAN.md — Batch Scanning & Clean PDF Rewrite (Multi-page processing and high-fidelity text-only PDFs)
+- [x] 03-01-PLAN.md — OpenCV Edge Detection (Custom CameraX analyzer for document boundary isolation)
+- [x] 03-02-PLAN.md — Bento Grid & Deep Search (Dynamic home screen with full-text search and UI tests)
+- [x] 03-03-PLAN.md — Real-time Overlay & Manual Crop (Live guidance and draggable corner refinement)
+- [x] 03-04-PLAN.md — Batch Scanning & Clean PDF Rewrite (Multi-page processing and high-fidelity text-only PDFs)
+
 
 ## Phase 4: Polish, Testing & Deployment
-- [ ] **Task 4.1:** Conduct thorough unit and instrumentation testing.
-- [ ] **Task 4.2:** Perform performance optimization (memory leaks, OCR latency).
-- [ ] **Task 4.3:** Implement comprehensive error handling and analytics.
-- [ ] **Task 4.4:** Prepare for Play Store release (App icon, signing, metadata).
+**Goal:** Production hardening, testing coverage, performance optimization, and release readiness.
+
+**Requirements:** NREQ-2.1.1, NREQ-2.1.2, NREQ-2.2.1
+
+**Plans:** 4 plans
+- [ ] 04-01-PLAN.md — Testing Suite & Quality Gates (JUnit, Roborazzi setup, E2E pipeline)
+- [ ] 04-02-PLAN.md — Performance & Memory Hardening (OpenCV Mat management, latency optimization)
+- [ ] 04-03-PLAN.md — Resilience & Observability (WorkManager backoff, high-viz errors, custom Analytics)
+- [ ] 04-04-PLAN.md — Release Readiness & Localization (Strings extraction, R8/ProGuard, Play Store assets)
