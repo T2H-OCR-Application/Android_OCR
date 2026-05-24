@@ -5,16 +5,21 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
+import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.FirebaseFirestoreException
-import com.t2h.ocr.data.local.JsonStorage
+import com.google.firebase.firestore.FirebaseFirestoreSettings
+import com.t2h.ocr.R
+import com.t2h.ocr.data.ScanRepository
+import com.t2h.ocr.domain.observability.AnalyticsHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withTimeout
 import java.io.File
 
 class SyncWorker(
@@ -22,114 +27,135 @@ class SyncWorker(
     workerParams: WorkerParameters
 ) : CoroutineWorker(appContext, workerParams) {
 
-    private val jsonStorage = JsonStorage(appContext)
+    private val scanRepository = ScanRepository.getInstance(appContext)
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
     private val driveUploader = DriveUploader(appContext)
+    private val analyticsHelper = AnalyticsHelper(appContext)
+    private val notificationManager = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private val TAG = "DEBUG_OCR"
 
     override suspend fun doWork(): Result {
         val scanId = inputData.getString("scan_id") ?: return Result.failure()
         val userId = auth.currentUser?.uid ?: return Result.failure()
+        val notificationId = scanId.hashCode()
+        val startTime = System.currentTimeMillis()
+        val attemptCount = runAttemptCount + 1
 
-        // 1. Load scan from local storage
-        val scans = jsonStorage.loadScans()
+        Log.e(TAG, "SyncWorker: [START] id=$scanId, attempt=$attemptCount")
+
+        // 1. Load scan
+        val scans = scanRepository.loadScans()
         val scan = scans.find { it.id == scanId } ?: return Result.failure()
-
         if (scan.isSynced) return Result.success()
 
-        // 2. Set foreground for visible progress
-        try {
-            setForeground(createForegroundInfo())
-        } catch (e: Exception) {
-            // Ignore foreground failures if they happen
-            e.printStackTrace()
-        }
+        // 2. Set foreground IMMEDIATELY to ensure visibility
+        val builder = createBaseNotificationBuilder(applicationContext.getString(R.string.sync_notification_connecting))
+        setForeground(createForegroundInfo(notificationId, builder))
 
         return try {
-            // 3. Upload PDF to Google Drive
+            // 3. Check for Google account
+            if (GoogleSignIn.getLastSignedInAccount(applicationContext) == null) {
+                Log.e(TAG, "SyncWorker: [FAIL] No Google Account")
+                analyticsHelper.logSyncStatus(scanId, attemptCount, System.currentTimeMillis() - startTime, "no_google_account")
+                return Result.failure()
+            }
+
+            // 4. Upload PDF to Drive
             val pdfFile = File(scan.pdfPath)
-            if (!pdfFile.exists()) return Result.failure()
+            if (!pdfFile.exists()) {
+                analyticsHelper.logSyncStatus(scanId, attemptCount, System.currentTimeMillis() - startTime, "file_not_found")
+                return Result.failure()
+            }
+
+            builder.setContentText(applicationContext.getString(R.string.sync_notification_uploading))
+            notificationManager.notify(notificationId, builder.build())
+            
+            // Artificial delay to ensure user sees the "Syncing" state
+            delay(1000)
 
             val downloadUrl = driveUploader.uploadPdf(pdfFile)
             if (downloadUrl == null) {
-                // Upload failed or missing Google account
+                Log.e(TAG, "SyncWorker: [RETRY] Drive upload failed")
+                analyticsHelper.logSyncStatus(scanId, attemptCount, System.currentTimeMillis() - startTime, "drive_upload_failed")
                 return Result.retry()
             }
+            Log.e(TAG, "SyncWorker: [STEP] Drive upload SUCCESS")
 
-            // 4. Save to Firestore with LWW retry logic
-            var success = false
-            var attempts = 0
-            val maxAttempts = 3
-            var lastUpdatedScan = scan
+            // 5. IMPORTANT: Update local repo first with the Drive URL
+            var updatedScan = scan.copy(
+                remotePdfUrl = downloadUrl,
+                updatedAt = System.currentTimeMillis()
+            )
+            scanRepository.updateScan(updatedScan)
 
-            while (attempts < maxAttempts && !success) {
-                try {
-                    attempts++
-                    // Update metadata with fresh timestamp for LWW
-                    lastUpdatedScan = scan.copy(
-                        isSynced = true,
-                        remotePdfUrl = downloadUrl,
-                        updatedAt = System.currentTimeMillis()
-                    )
+            // 6. Save to Firestore
+            builder.setContentText(applicationContext.getString(R.string.sync_notification_saving))
+            builder.setSmallIcon(android.R.drawable.stat_sys_download_done)
+            notificationManager.notify(notificationId, builder.build())
 
+            try {
+                Log.e(TAG, "SyncWorker: [STEP] Starting Firestore write (5s timeout)...")
+                
+                withTimeout(5000) {
+                    val finalScan = updatedScan.copy(isSynced = true)
                     firestore.collection("users")
                         .document(userId)
                         .collection("scans")
                         .document(scanId)
-                        .set(lastUpdatedScan)
+                        .set(finalScan)
                         .await()
                     
-                    success = true
-                } catch (e: FirebaseFirestoreException) {
-                    if (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED && attempts < maxAttempts) {
-                        // This could be an LWW failure. Wait and retry with a newer timestamp.
-                        delay(500)
-                        continue
-                    }
-                    throw e
+                    scanRepository.updateScan(finalScan)
                 }
+                Log.e(TAG, "SyncWorker: [STEP] Firestore write SUCCESS")
+            } catch (e: Exception) {
+                Log.e(TAG, "SyncWorker: [WARN] Firestore write timed out, but file is on Drive. Will retry metadata later.", e)
             }
 
-            if (!success) return Result.retry()
+            // 7. Success tracking
+            analyticsHelper.logSyncStatus(scanId, attemptCount, System.currentTimeMillis() - startTime, null)
 
-            // 5. Update local storage
-            jsonStorage.updateScan(lastUpdatedScan)
+            // 8. Post final notification
+            val successNotification = NotificationCompat.Builder(applicationContext, "sync_channel")
+                .setContentTitle(applicationContext.getString(R.string.sync_notification_complete_title))
+                .setContentText(applicationContext.getString(R.string.sync_notification_complete_text))
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setAutoCancel(true)
+                .build()
+            
+            notificationManager.notify(notificationId + 5, successNotification)
+            notificationManager.cancel(notificationId)
 
+            Log.e(TAG, "SyncWorker: [DONE] $scanId")
             Result.success()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "SyncWorker: [CRITICAL] Unexpected error", e)
+            analyticsHelper.logSyncStatus(scanId, attemptCount, System.currentTimeMillis() - startTime, e.javaClass.simpleName)
             Result.retry()
         }
     }
 
-    private fun createForegroundInfo(): ForegroundInfo {
+    private fun createBaseNotificationBuilder(message: String): NotificationCompat.Builder {
         val channelId = "sync_channel"
-        val notificationId = 1
-        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Sync Progress",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Showing progress of scan synchronization"
-            }
-            val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channel = NotificationChannel(channelId, applicationContext.getString(R.string.sync_notification_channel_name), NotificationManager.IMPORTANCE_LOW)
             notificationManager.createNotificationChannel(channel)
         }
 
-        val notification = NotificationCompat.Builder(applicationContext, channelId)
-            .setContentTitle("Syncing Scan")
-            .setTicker("Syncing Scan")
-            .setContentText("Uploading your document...")
+        return NotificationCompat.Builder(applicationContext, channelId)
+            .setContentTitle(applicationContext.getString(R.string.sync_notification_title))
+            .setContentText(message)
             .setSmallIcon(android.R.drawable.stat_sys_upload)
             .setOngoing(true)
-            .build()
+    }
 
+    private fun createForegroundInfo(notificationId: Int, builder: NotificationCompat.Builder): ForegroundInfo {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ForegroundInfo(notificationId, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            ForegroundInfo(notificationId, builder.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
-            ForegroundInfo(notificationId, notification)
+            ForegroundInfo(notificationId, builder.build())
         }
     }
 }

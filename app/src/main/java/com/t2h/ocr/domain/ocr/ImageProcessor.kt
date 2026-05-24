@@ -36,23 +36,20 @@ object ImageProcessor {
         val heightB = sqrt((tl.x - bl.x).pow(2.0) + (tl.y - bl.y).pow(2.0))
         val maxHeight = max(heightA, heightB).toInt()
 
-        val dst = MatOfPoint2f(
+        val output = Mat()
+
+        MatOfPoint2f(
             Point(0.0, 0.0),
             Point((maxWidth - 1).toDouble(), 0.0),
             Point((maxWidth - 1).toDouble(), (maxHeight - 1).toDouble()),
             Point(0.0, (maxHeight - 1).toDouble())
-        )
-
-        val src = MatOfPoint2f(*sortedCorners.toTypedArray())
-        
-        val transform = Imgproc.getPerspectiveTransform(src, dst)
-        val output = Mat()
-        Imgproc.warpPerspective(input, output, transform, Size(maxWidth.toDouble(), maxHeight.toDouble()))
-
-        // Cleanup
-        src.release()
-        dst.release()
-        transform.release()
+        ).use { dst ->
+            MatOfPoint2f(*sortedCorners.toTypedArray()).use { src ->
+                Imgproc.getPerspectiveTransform(src, dst).use { transform ->
+                    Imgproc.warpPerspective(input, output, transform, Size(maxWidth.toDouble(), maxHeight.toDouble()))
+                }
+            }
+        }
 
         return output
     }

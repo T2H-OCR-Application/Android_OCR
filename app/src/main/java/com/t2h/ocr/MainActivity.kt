@@ -5,35 +5,54 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.work.WorkManager
 import com.google.firebase.auth.FirebaseAuth
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text as VisionText
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.t2h.ocr.data.ScanRepository
 import com.t2h.ocr.data.auth.AuthRepository
+import com.t2h.ocr.data.local.JsonStorage
+import com.t2h.ocr.data.models.ScannedPage
 import com.t2h.ocr.domain.ocr.ImageProcessor
 import com.t2h.ocr.ui.components.CameraPermissionRationale
+import com.t2h.ocr.ui.home.HomeScreen
+import com.t2h.ocr.ui.home.HomeViewModel
+import com.t2h.ocr.ui.home.HomeViewModelFactory
 import com.t2h.ocr.ui.profile.ProfileScreen
 import com.t2h.ocr.ui.results.ResultsScreen
+import com.t2h.ocr.ui.results.ResultsViewModel
+import com.t2h.ocr.ui.results.ResultsViewModelFactory
 import com.t2h.ocr.ui.scanner.CropScreen
+import com.t2h.ocr.ui.scanner.GalleryScreen
 import com.t2h.ocr.ui.scanner.ScannerScreen
+import com.t2h.ocr.ui.scanner.ScannerViewModel
 import com.t2h.ocr.ui.theme.AndroidOCRTheme
+import com.t2h.ocr.domain.observability.AnalyticsHelper
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
+import org.opencv.android.OpenCVLoader
 import org.opencv.android.Utils
 import org.opencv.core.Mat
 import org.opencv.imgcodecs.Imgcodecs
@@ -46,11 +65,14 @@ import java.util.UUID
  */
 sealed class Screen {
     object Loading : Screen()
+    object Home : Screen()
     object Permission : Screen()
     object Scanner : Screen()
     object Profile : Screen()
+    object Settings : Screen()
+    object Gallery : Screen()
     data class Crop(val imagePath: String, val points: List<Point>) : Screen()
-    data class Results(val text: VisionText, val imagePath: String) : Screen()
+    data class Results(val pages: List<String>, val imagePath: String, val allImagePaths: List<String>) : Screen()
 }
 
 class MainActivity : ComponentActivity() {
@@ -60,6 +82,13 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalAnimationApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize OpenCV
+        if (!OpenCVLoader.initDebug()) {
+            Log.e("MainActivity", "OpenCV initialization failed.")
+        } else {
+            Log.d("MainActivity", "OpenCV initialized successfully.")
+        }
 
         // Initialize Firebase Auth anonymously
         authRepository = AuthRepository()
@@ -78,19 +107,30 @@ class MainActivity : ComponentActivity() {
                     
                     var currentScreen by remember { mutableStateOf<Screen>(Screen.Loading) }
                     var isProcessing by remember { mutableStateOf(false) }
+                    
+                    // Core Data Layer
+                    val scanRepository = remember { ScanRepository.getInstance(context) }
+                    val workManager = remember { WorkManager.getInstance(context) }
+
+                    val scannerViewModel: ScannerViewModel = viewModel()
+                    val scannedPages by scannerViewModel.scannedPages.collectAsState()
+
+                    val analyticsHelper = remember { AnalyticsHelper(context) }
+                    
+                    LaunchedEffect(Unit) {
+                        scannerViewModel.initAnalytics(analyticsHelper)
+                        analyticsHelper.logUserInteraction("MainActivity", "app_start")
+                    }
+
+                    // Initialize HomeViewModel
+                    val homeViewModel: HomeViewModel = viewModel(
+                        factory = HomeViewModelFactory(scanRepository, workManager)
+                    )
 
                     // Handle initial navigation and auth state
                     LaunchedEffect(currentUser) {
                         if (currentUser != null && currentScreen == Screen.Loading) {
-                            currentScreen = if (ContextCompat.checkSelfPermission(
-                                    context,
-                                    Manifest.permission.CAMERA
-                                ) == PackageManager.PERMISSION_GRANTED
-                            ) {
-                                Screen.Scanner
-                            } else {
-                                Screen.Permission
-                            }
+                            currentScreen = Screen.Home
                         }
                     }
 
@@ -111,7 +151,7 @@ class MainActivity : ComponentActivity() {
                     AnimatedContent(
                         targetState = currentScreen,
                         transitionSpec = {
-                            if (targetState is Screen.Results || targetState is Screen.Crop) {
+                            if (targetState is Screen.Results || targetState is Screen.Crop || targetState is Screen.Gallery) {
                                 slideInHorizontally { it } + fadeIn() with
                                         slideOutHorizontally { -it } + fadeOut()
                             } else {
@@ -131,9 +171,33 @@ class MainActivity : ComponentActivity() {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         CircularProgressIndicator()
                                         Spacer(modifier = Modifier.height(16.dp))
-                                        Text("Initializing session...")
+                                        Text(stringResource(R.string.common_initializing))
                                     }
                                 }
+                            }
+
+                            Screen.Home -> {
+                                HomeScreen(
+                                    viewModel = homeViewModel,
+                                    onScanClick = { scan ->
+                                        currentScreen = Screen.Results(
+                                            pages = listOf(scan.ocrText),
+                                            imagePath = scan.imagePath,
+                                            allImagePaths = emptyList()
+                                        )
+                                    },
+                                    onNewScanClick = {
+                                        if (ContextCompat.checkSelfPermission(
+                                                context,
+                                                Manifest.permission.CAMERA
+                                            ) == PackageManager.PERMISSION_GRANTED
+                                        ) {
+                                            currentScreen = Screen.Scanner
+                                        } else {
+                                            currentScreen = Screen.Permission
+                                        }
+                                    }
+                                )
                             }
 
                             Screen.Permission -> {
@@ -142,18 +206,22 @@ class MainActivity : ComponentActivity() {
                                         permissionLauncher.launch(permissionsToRequest.toTypedArray())
                                     },
                                     onDismissClick = {
-                                        // In a real app, we might show a message or close the app
+                                        currentScreen = Screen.Home
                                     }
                                 )
                             }
 
                             Screen.Scanner -> {
                                 ScannerScreen(
+                                    viewModel = scannerViewModel,
                                     onDocumentCaptured = { path, points ->
                                         currentScreen = Screen.Crop(path, points)
                                     },
                                     onProfileClick = {
                                         currentScreen = Screen.Profile
+                                    },
+                                    onGalleryClick = {
+                                        currentScreen = Screen.Gallery
                                     }
                                 )
                             }
@@ -162,7 +230,28 @@ class MainActivity : ComponentActivity() {
                                 ProfileScreen(
                                     authRepository = authRepository,
                                     onNavigateBack = {
-                                        currentScreen = Screen.Scanner
+                                        currentScreen = Screen.Home
+                                    },
+                                    onNavigateToSettings = {
+                                        currentScreen = Screen.Settings
+                                    }
+                                )
+                            }
+
+                            Screen.Settings -> {
+                                val settingsViewModel: com.t2h.ocr.ui.settings.SettingsViewModel = viewModel(
+                                    factory = com.t2h.ocr.ui.settings.SettingsViewModelFactory(
+                                        com.t2h.ocr.data.local.UserPreferences(context)
+                                    )
+                                )
+                                LaunchedEffect(Unit) {
+                                    settingsViewModel.initAnalytics(analyticsHelper)
+                                    analyticsHelper.logUserInteraction("SettingsScreen", "screen_view")
+                                }
+                                com.t2h.ocr.ui.settings.SettingsScreen(
+                                    viewModel = settingsViewModel,
+                                    onBack = {
+                                        currentScreen = Screen.Profile
                                     }
                                 )
                             }
@@ -175,14 +264,24 @@ class MainActivity : ComponentActivity() {
                                         onConfirm = { finalPoints ->
                                             isProcessing = true
                                             scope.launch {
+                                                val startTime = System.currentTimeMillis()
                                                 val result = processAndOcr(screen.imagePath, finalPoints)
+                                                val latency = System.currentTimeMillis() - startTime
                                                 isProcessing = false
                                                 if (result != null) {
-                                                    currentScreen = Screen.Results(result.first, result.second)
+                                                    // Cleanup source capture file
+                                                    try { File(screen.imagePath).delete() } catch (e: Exception) {}
+                                                    
+                                                    scannerViewModel.logOcrPerformance(latency, 1, "success")
+                                                    scannerViewModel.addPage(ScannedPage(imagePath = result.second, text = result.first.text))
+                                                    currentScreen = Screen.Gallery
+                                                } else {
+                                                    scannerViewModel.logOcrPerformance(latency, 1, "failure")
                                                 }
                                             }
                                         },
                                         onCancel = {
+                                            try { File(screen.imagePath).delete() } catch (e: Exception) {}
                                             currentScreen = Screen.Scanner
                                         }
                                     )
@@ -197,16 +296,52 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
-
-                            is Screen.Results -> {
-                                ResultsScreen(
-                                    recognizedText = screen.text,
-                                    imagePath = screen.imagePath,
-                                    onSaveComplete = {
+                            
+                            Screen.Gallery -> {
+                                GalleryScreen(
+                                    pages = scannedPages,
+                                    onAddMore = {
                                         currentScreen = Screen.Scanner
+                                    },
+                                    onRemovePage = { id ->
+                                        scannerViewModel.removePage(id)
+                                    },
+                                    onFinish = {
+                                        currentScreen = Screen.Results(
+                                            pages = scannedPages.map { it.text },
+                                            imagePath = scannedPages.firstOrNull()?.imagePath ?: "",
+                                            allImagePaths = scannedPages.map { it.imagePath }
+                                        )
                                     },
                                     onBackClick = {
                                         currentScreen = Screen.Scanner
+                                    }
+                                )
+                            }
+
+                            is Screen.Results -> {
+                                val resultsViewModel: ResultsViewModel = viewModel(
+                                    factory = ResultsViewModelFactory(scanRepository)
+                                )
+                                LaunchedEffect(Unit) {
+                                    resultsViewModel.initAnalytics(analyticsHelper)
+                                    analyticsHelper.logUserInteraction("ResultsScreen", "screen_view")
+                                }
+                                ResultsScreen(
+                                    viewModel = resultsViewModel,
+                                    pages = screen.pages,
+                                    imagePath = screen.imagePath,
+                                    allImagePaths = screen.allImagePaths,
+                                    onSaveComplete = {
+                                        scannerViewModel.clearPages()
+                                        currentScreen = Screen.Home
+                                    },
+                                    onBackClick = {
+                                        if (scannedPages.isNotEmpty()) {
+                                            currentScreen = Screen.Gallery
+                                        } else {
+                                            currentScreen = Screen.Home
+                                        }
                                     }
                                 )
                             }
@@ -234,7 +369,7 @@ class MainActivity : ComponentActivity() {
             if (bitmap == null) return@withContext null
 
             val inputImage = InputImage.fromBitmap(bitmap, 0)
-            val visionText = kotlinx.coroutines.tasks.await(recognizer.process(inputImage))
+            val visionText = recognizer.process(inputImage).await()
             
             visionText to warpedFile.absolutePath
         } catch (e: Exception) {
@@ -248,4 +383,3 @@ class MainActivity : ComponentActivity() {
         recognizer.close()
     }
 }
-
