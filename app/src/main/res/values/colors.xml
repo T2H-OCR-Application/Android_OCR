@@ -9,5 +9,8 @@
     <color name="white">#FFFFFFFF</color>
     <color name="Unspecified">#C3C3C3C3</color>
     <color name="Icon_cl">#15B1A2</color>
+    <color name="bg_color">#2C2B30</color>
+    <color name="main_act">#232226</color>
+    <color name="icon_chose">#FFEA00</color>
 
 </resources>
