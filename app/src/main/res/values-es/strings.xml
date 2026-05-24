@@ -1,0 +1,95 @@
+<resources>
+    <string name="app_name">Android OCR</string>
+    
+    <!-- Errors -->
+    <string name="error_camera_title">Cámara no disponible</string>
+    <string name="error_camera_message">No pudimos inicializar la cámara. Esto puede deberse a problemas de hardware o permisos denegados.</string>
+    <string name="error_camera_action">Reintentar</string>
+    <string name="error_account_title">Cuenta requerida</string>
+    <string name="error_account_message">Su sesión ha expirado o la cuenta ya no es válida. Inicie sesión para sincronizar sus escaneos.</string>
+    <string name="error_account_action">Iniciar sesión / Vincular cuenta</string>
+    <string name="error_sync_title">Error crítico de sincronización</string>
+    <string name="error_sync_message">Ocurrió un error fatal durante la sincronización. Compruebe su conexión a Internet o libere algo de espacio.</string>
+    <string name="error_sync_action">Reintentar sincronización</string>
+
+    <!-- Permissions -->
+    <string name="permission_grant">Conceder permiso</string>
+    <string name="permission_not_now">Ahora no</string>
+    <string name="permission_camera_title">Acceso a la cámara requerido</string>
+    <string name="permission_camera_description">Para escanear documentos y extraer texto en tiempo real, necesitamos acceso a su cámara. Su privacidad es importante; los datos de la cámara se procesan localmente en su dispositivo.</string>
+
+    <!-- Home -->
+    <string name="home_search_placeholder">Buscar escaneos…</string>
+    <string name="home_no_scans">Aún no hay escaneos</string>
+    <string name="home_no_results">No se encontraron resultados</string>
+    <string name="home_new_scan">Nuevo escaneo</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Perfil</string>
+    <string name="profile_anonymous">Cuenta anónima</string>
+    <string name="profile_linked">Cuenta vinculada</string>
+    <string name="profile_uid">UID: %1$s</string>
+    <string name="profile_email">Correo electrónico: %1$s</string>
+    <string name="profile_link_google">Vincular cuenta de Google</string>
+    <string name="profile_google_linked">Su cuenta está vinculada a Google.</string>
+
+    <!-- Results -->
+    <string name="results_title_batch">Revisar lote</string>
+    <string name="results_title_scan">Revisar escaneo</string>
+    <string name="results_label_text">Texto reconocido</string>
+    <string name="results_save_pdf">Guardar como PDF</string>
+
+    <!-- Crop -->
+    <string name="crop_cancel">Cancelar</string>
+    <string name="crop_confirm">Confirmar</string>
+
+    <!-- Gallery -->
+    <string name="gallery_title">Páginas escaneadas (%1$d)</string>
+    <string name="gallery_add_page">Añadir página</string>
+    <string name="gallery_no_pages">Aún no hay páginas escaneadas.</string>
+    <string name="gallery_generate_pdf">Generar PDF</string>
+    <string name="gallery_remove_page">Eliminar</string>
+
+    <!-- Scanner -->
+    <string name="scanner_capture">Capturar documento</string>
+    <string name="scanner_profile">Perfil</string>
+    <string name="scanner_pages">Páginas</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_resource_mgmt">Gestión de recursos</string>
+    <string name="settings_wifi_sync_title">Sincronización solo por Wi-Fi</string>
+    <string name="settings_wifi_sync_desc">Solo sincronizar documentos cuando esté conectado a Wi-Fi para ahorrar datos.</string>
+    <string name="settings_clear_cache_sync_title">Borrar caché tras sincronizar</string>
+    <string name="settings_clear_cache_sync_desc">Eliminar automáticamente los archivos locales después de que se hayan sincronizado correctamente con la nube.</string>
+    <string name="settings_storage">Almacenamiento</string>
+    <string name="settings_clear_cache_btn">Borrar caché local</string>
+
+    <!-- Toasts & Common -->
+    <string name="common_back">Volver</string>
+    <string name="common_initializing">Inicializando sesión…</string>
+    <string name="common_delete">Eliminar</string>
+    <string name="toast_account_linked">¡Cuenta vinculada con éxito!</string>
+    <string name="toast_link_failed">Error al vincular la cuenta con Firebase. Compruebe su red o la consola de Firebase.</string>
+    <string name="toast_google_failed_token">Error al iniciar sesión con Google: no se devolvió ningún token de ID.</string>
+    <string name="toast_google_failed_status">Error al iniciar sesión con Google (Código de estado: %1$d). Detalles: %2$s</string>
+    <string name="toast_google_failed_result">Error al iniciar sesión con Google con código de resultado: %1$d</string>
+    <string name="toast_sign_in_cancelled">Inicio de sesión cancelado</string>
+    <string name="toast_cache_cleared">Caché local borrada</string>
+    <string name="toast_cache_clear_failed">Error al borrar la caché</string>
+
+    <!-- Sync Status Labels -->
+    <string name="sync_status_syncing">Sincronizando…</string>
+    <string name="sync_status_waiting">Esperando red</string>
+    <string name="sync_status_failed">Error de sincronización</string>
+    <string name="sync_status_success">Sincronización exitosa</string>
+
+    <!-- Sync Notifications -->
+    <string name="sync_notification_channel_name">Sincronización de escaneos</string>
+    <string name="sync_notification_title">Sincronizando con la nube</string>
+    <string name="sync_notification_connecting">Conectando a los servicios…</string>
+    <string name="sync_notification_uploading">Subiendo a Google Drive…</string>
+    <string name="sync_notification_saving">Guardado exitoso</string>
+    <string name="sync_notification_complete_title">Sincronización completa</string>
+    <string name="sync_notification_complete_text">Documento guardado con éxito en la nube</string>
+</resources>
