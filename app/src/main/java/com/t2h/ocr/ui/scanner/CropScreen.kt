@@ -22,8 +22,10 @@ import androidx.compose.ui.unit.dp
 import org.opencv.core.Point
 import java.io.File
 import androidx.compose.foundation.Image
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.layout.onGloballyPositioned
+import com.t2h.ocr.R
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -115,13 +117,13 @@ fun CropScreen(
                                                 corners[nearestIdx].y * drawHeight + offsetY
                                             )
                                             val newCornerPx = currentCornerPx + dragAmount
-                                            
+
                                             // Back to normalized
                                             val newNormalized = Offset(
                                                 ((newCornerPx.x - offsetX) / drawWidth).coerceIn(0f, 1f),
                                                 ((newCornerPx.y - offsetY) / drawHeight).coerceIn(0f, 1f)
                                             )
-                                            
+
                                             val newCorners = corners.toMutableList()
                                             newCorners[nearestIdx] = newNormalized
                                             corners = newCorners
@@ -182,22 +184,21 @@ fun CropScreen(
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             Button(onClick = onCancel) {
-                Text("Cancel")
+                Text(stringResource(R.string.crop_cancel))
             }
             Button(onClick = {
                 if (bitmap != null) {
-                    val finalPoints = corners.map { 
-                        Point(it.x.toDouble() * bitmap.width, it.y.toDouble() * bitmap.height) 
+                    val finalPoints = corners.map {
+                        Point(it.x.toDouble() * bitmap.width, it.y.toDouble() * bitmap.height)
                     }
                     onConfirm(finalPoints)
                 }
             }) {
-                Text("Confirm")
+                Text(stringResource(R.string.crop_confirm))
             }
         }
     }
 }
-
 private fun distance(p1: Offset, p2: Offset): Float {
     return sqrt((p1.x - p2.x).pow(2) + (p1.y - p2.y).pow(2))
 }
