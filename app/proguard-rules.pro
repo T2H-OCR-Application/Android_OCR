@@ -1,21 +1,22 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# ML Kit
+-keep class com.google.mlkit.** { *; }
+-keep class com.google.android.gms.internal.mlkit_vision_text.** { *; }
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# OpenCV
+-keep class org.opencv.** { *; }
+-keepclassmembers class org.opencv.** {
+    native <methods>;
+}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Firebase & Play Services
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Serialization
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class kotlinx.serialization.** { *; }
+
+# Google Drive API
+-keep class com.google.api.** { *; }
+-keep class com.google.auth.** { *; }
