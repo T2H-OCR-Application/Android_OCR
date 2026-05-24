@@ -3,6 +3,9 @@ package com.t2h.ocr.data.local
 import android.content.Context
 import androidx.core.util.AtomicFile
 import com.t2h.ocr.data.models.ScanMetadata
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -11,18 +14,27 @@ import java.io.FileOutputStream
 /**
  * Handles local persistence of scan metadata using JSON serialization.
  */
-class JsonStorage(private val context: Context) {
+open class JsonStorage(private val filesDir: File) : ScanStorage {
+    constructor(context: Context) : this(context.filesDir)
+
     private val fileName = "scans.json"
-    private val file = File(context.filesDir, fileName)
+    private val file = File(filesDir, fileName)
     private val json = Json { 
         prettyPrint = true 
         ignoreUnknownKeys = true 
     }
 
+    private val _scansFlow = MutableStateFlow<List<ScanMetadata>>(emptyList())
+    override val scans = _scansFlow.asStateFlow()
+
+    init {
+        _scansFlow.value = loadScans()
+    }
+
     /**
      * Saves the entire list of scans to the local JSON file atomically.
      */
-    fun saveScans(scans: List<ScanMetadata>) {
+    override fun saveScans(scans: List<ScanMetadata>) {
         val atomicFile = AtomicFile(file)
         var stream: FileOutputStream? = null
         try {
@@ -30,6 +42,7 @@ class JsonStorage(private val context: Context) {
             stream = atomicFile.startWrite()
             stream?.write(jsonString.toByteArray())
             atomicFile.finishWrite(stream)
+            _scansFlow.value = scans
         } catch (e: Exception) {
             atomicFile.failWrite(stream)
             // In a real app, we might want to log this to a crash reporting tool
@@ -41,7 +54,7 @@ class JsonStorage(private val context: Context) {
      * Loads the list of scans from the local JSON file.
      * Returns an empty list if the file doesn't exist or is invalid.
      */
-    fun loadScans(): List<ScanMetadata> {
+    override fun loadScans(): List<ScanMetadata> {
         if (!file.exists()) return emptyList()
         return try {
             val jsonString = file.readText()
@@ -55,7 +68,7 @@ class JsonStorage(private val context: Context) {
     /**
      * Adds a single scan to the storage.
      */
-    fun addScan(scan: ScanMetadata) {
+    override fun addScan(scan: ScanMetadata) {
         val currentScans = loadScans().toMutableList()
         currentScans.add(0, scan) // Newest first
         saveScans(currentScans)
@@ -64,10 +77,18 @@ class JsonStorage(private val context: Context) {
     /**
      * Updates an existing scan in the storage.
      */
-    fun updateScan(updatedScan: ScanMetadata) {
+    override fun updateScan(updatedScan: ScanMetadata) {
         val currentScans = loadScans().map {
             if (it.id == updatedScan.id) updatedScan else it
         }
+        saveScans(currentScans)
+    }
+
+    /**
+     * Deletes a single scan from storage.
+     */
+    override fun deleteScan(scanId: String) {
+        val currentScans = loadScans().filter { it.id != scanId }
         saveScans(currentScans)
     }
 }

@@ -11,18 +11,18 @@
 
 ### 1.2 PDF Generation
 - [x] **REQ-1.2.1:** Generation of searchable PDF files from extracted text.
-- [ ] **REQ-1.2.2:** Support for multi-page PDF documents.
-- [ ] **REQ-1.2.3:** Standard PDF layout with text wrapping and basic formatting.
+- [x] **REQ-1.2.2:** Support for multi-page PDF documents.
+- [x] **REQ-1.2.3:** Standard PDF layout with text wrapping and basic formatting.
 
 ### 1.3 Synchronization & Security
-- [ ] **REQ-1.3.1:** User authentication via Firebase (Email/Password or Social).
-- [ ] **REQ-1.3.2:** Real-time synchronization of scan history and metadata using Cloud Firestore.
-- [ ] **REQ-1.3.3:** Secure storage of PDF documents in Firebase Cloud Storage.
-- [ ] **REQ-1.3.4:** Data isolation: users can only access their own documents.
+- [x] **REQ-1.3.1:** User authentication via Firebase (Email/Password or Social).
+- [x] **REQ-1.3.2:** Real-time synchronization of scan history and metadata using Cloud Firestore.
+- [x] **REQ-1.3.3:** Secure storage of PDF documents in Firebase Cloud Storage.
+- [x] **REQ-1.3.4:** Data isolation: users can only access their own documents.
 - [x] **REQ-1.3.5:** Offline-first support: users can scan and edit documents without an internet connection, with sync occurring upon reconnection.
 
 ### 1.4 User Interface
-- [ ] **REQ-1.4.1:** Modern "Bento Grid" home screen for managing recent scans.
+- [x] **REQ-1.4.1:** Modern "Bento Grid" home screen for managing recent scans.
 - [x] **REQ-1.4.2:** Intuitive scanner interface with clear feedback and controls.
 - [x] **REQ-1.4.3:** Support for Material 3 Dynamic Colors.
 - [x] **REQ-1.4.4:** Dark mode and light mode support.

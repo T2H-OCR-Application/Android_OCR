@@ -51,7 +51,7 @@
 **Requirements:** NREQ-2.1.1, NREQ-2.1.2, NREQ-2.2.1
 
 **Plans:** 4 plans
-- [ ] 04-01-PLAN.md — Testing Suite & Quality Gates (JUnit, Roborazzi setup, E2E pipeline)
-- [ ] 04-02-PLAN.md — Performance & Memory Hardening (OpenCV Mat management, latency optimization)
-- [ ] 04-03-PLAN.md — Resilience & Observability (WorkManager backoff, high-viz errors, custom Analytics)
-- [ ] 04-04-PLAN.md — Release Readiness & Localization (Strings extraction, R8/ProGuard, Play Store assets)
+- [x] 04-01-PLAN.md — Testing Suite & Quality Gates (JUnit, Roborazzi setup, E2E pipeline)
+- [x] 04-02-PLAN.md — Performance & Memory Hardening (OpenCV Mat management, latency optimization)
+- [x] 04-03-PLAN.md — Resilience & Observability (WorkManager backoff, high-viz errors, custom Analytics)
+- [x] 04-04-PLAN.md — Release Readiness & Localization (Strings extraction, R8/ProGuard, Play Store assets)
