@@ -220,6 +220,9 @@ class MainActivity : ComponentActivity() {
                                     onProfileClick = {
                                         currentScreen = Screen.Profile
                                     },
+                                    onBackClick = {
+                                        currentScreen = Screen.Home
+                                    },
                                     onGalleryClick = {
                                         currentScreen = Screen.Gallery
                                     }

@@ -1,8 +1,6 @@
 package com.t2h.ocr.ui.scanner
 
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Matrix
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
@@ -20,7 +18,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import org.opencv.core.Point
-import java.io.File
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.drawscope.Fill
@@ -41,12 +38,12 @@ fun CropScreen(
         BitmapFactory.decodeFile(imagePath)
     }
 
-    // Normalized coordinates (0.0 to 1.0) for easier scaling
     var corners by remember {
         mutableStateOf(
-            if (initialPoints.size == 4 && bitmap != null) {
-                initialPoints.map { Offset(it.x.toFloat() / bitmap.width, it.y.toFloat() / bitmap.height) }
+            if (initialPoints.size == 4) {
+                initialPoints.map { Offset(it.x.toFloat(), it.y.toFloat()) }
             } else {
+                // Default rectangle if no detection provided
                 listOf(
                     Offset(0.1f, 0.1f),
                     Offset(0.9f, 0.1f),
@@ -63,7 +60,7 @@ fun CropScreen(
 
             Box(modifier = Modifier
                 .fillMaxSize()
-                .padding(32.dp)
+                .padding(bottom = 120.dp, top = 16.dp, start = 16.dp, end = 16.dp)
                 .onGloballyPositioned { layoutCoordinates ->
                     canvasSize = androidx.compose.ui.geometry.Size(
                         layoutCoordinates.size.width.toFloat(),
@@ -78,7 +75,6 @@ fun CropScreen(
                     contentScale = ContentScale.Fit
                 )
 
-                // Calculate the actual image rect in the Canvas
                 val imageWidth = bitmap.width.toFloat()
                 val imageHeight = bitmap.height.toFloat()
                 val containerWidth = canvasSize.width
@@ -95,42 +91,34 @@ fun CropScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .pointerInput(Unit) {
-                                detectDragGestures(
-                                    onDragStart = { offset ->
-                                        // Find nearest corner to start dragging
-                                        // offset is relative to the Canvas
-                                    },
-                                    onDrag = { change, dragAmount ->
-                                        val touchPoint = change.position
-                                        // Find nearest corner
-                                        val nearestIdx = corners.indices.minByOrNull { idx ->
-                                            val cornerPx = Offset(
-                                                corners[idx].x * drawWidth + offsetX,
-                                                corners[idx].y * drawHeight + offsetY
-                                            )
-                                            distance(touchPoint, cornerPx)
-                                        } ?: -1
+                                detectDragGestures { change, dragAmount ->
+                                    val touchPoint = change.position
+                                    val nearestIdx = corners.indices.minByOrNull { idx ->
+                                        val cornerPx = Offset(
+                                            corners[idx].x * drawWidth + offsetX,
+                                            corners[idx].y * drawHeight + offsetY
+                                        )
+                                        distance(touchPoint, cornerPx)
+                                    } ?: -1
 
-                                        if (nearestIdx != -1) {
-                                            val currentCornerPx = Offset(
-                                                corners[nearestIdx].x * drawWidth + offsetX,
-                                                corners[nearestIdx].y * drawHeight + offsetY
-                                            )
-                                            val newCornerPx = currentCornerPx + dragAmount
+                                    if (nearestIdx != -1) {
+                                        val currentCornerPx = Offset(
+                                            corners[nearestIdx].x * drawWidth + offsetX,
+                                            corners[nearestIdx].y * drawHeight + offsetY
+                                        )
+                                        val newCornerPx = currentCornerPx + dragAmount
 
-                                            // Back to normalized
-                                            val newNormalized = Offset(
-                                                ((newCornerPx.x - offsetX) / drawWidth).coerceIn(0f, 1f),
-                                                ((newCornerPx.y - offsetY) / drawHeight).coerceIn(0f, 1f)
-                                            )
+                                        val newNormalized = Offset(
+                                            ((newCornerPx.x - offsetX) / drawWidth).coerceIn(0f, 1f),
+                                            ((newCornerPx.y - offsetY) / drawHeight).coerceIn(0f, 1f)
+                                        )
 
-                                            val newCorners = corners.toMutableList()
-                                            newCorners[nearestIdx] = newNormalized
-                                            corners = newCorners
-                                        }
-                                        change.consume()
+                                        val newCorners = corners.toMutableList()
+                                        newCorners[nearestIdx] = newNormalized
+                                        corners = newCorners
                                     }
-                                )
+                                    change.consume()
+                                }
                             }
                     ) {
                         val path = Path().apply {
@@ -143,7 +131,6 @@ fun CropScreen(
                             close()
                         }
 
-                        // Draw overlay mask
                         drawPath(
                             path = path,
                             color = Color.Green.copy(alpha = 0.2f),
@@ -156,7 +143,6 @@ fun CropScreen(
                             style = Stroke(width = 2.dp.toPx())
                         )
 
-                        // Draw handles
                         corners.forEach { corner ->
                             val p = Offset(corner.x * drawWidth + offsetX, corner.y * drawHeight + offsetY)
                             drawCircle(
@@ -183,22 +169,29 @@ fun CropScreen(
                 .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            Button(onClick = onCancel) {
+            OutlinedButton(
+                onClick = onCancel,
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+            ) {
                 Text(stringResource(R.string.crop_cancel))
             }
-            Button(onClick = {
-                if (bitmap != null) {
-                    val finalPoints = corners.map {
-                        Point(it.x.toDouble() * bitmap.width, it.y.toDouble() * bitmap.height)
+            Button(
+                onClick = {
+                    if (bitmap != null) {
+                        val finalPoints = corners.map {
+                            Point(it.x.toDouble() * bitmap.width, it.y.toDouble() * bitmap.height)
+                        }
+                        onConfirm(finalPoints)
                     }
-                    onConfirm(finalPoints)
-                }
-            }) {
+                },
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+            ) {
                 Text(stringResource(R.string.crop_confirm))
             }
         }
     }
 }
+
 private fun distance(p1: Offset, p2: Offset): Float {
     return sqrt((p1.x - p2.x).pow(2) + (p1.y - p2.y).pow(2))
 }

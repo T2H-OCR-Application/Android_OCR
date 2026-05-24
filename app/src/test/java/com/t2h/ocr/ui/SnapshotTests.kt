@@ -46,8 +46,6 @@ class SnapshotTests {
     @Test
     fun captureScannerScreen() {
         val viewModel = mockk<ScannerViewModel>(relaxed = true)
-        every { viewModel.quadCoordinates } returns MutableStateFlow(emptyList())
-        every { viewModel.imageSize } returns MutableStateFlow(null)
         every { viewModel.scannedPages } returns MutableStateFlow(emptyList())
 
         composeTestRule.setContent {

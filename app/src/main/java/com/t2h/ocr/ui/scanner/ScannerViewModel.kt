@@ -10,12 +10,6 @@ import java.io.File
 
 class ScannerViewModel : ViewModel() {
 
-    private val _quadCoordinates = MutableStateFlow<List<Point>>(emptyList())
-    val quadCoordinates = _quadCoordinates.asStateFlow()
-
-    private val _imageSize = MutableStateFlow<Pair<Int, Int>?>(null)
-    val imageSize = _imageSize.asStateFlow()
-
     private val _scannedPages = MutableStateFlow<List<ScannedPage>>(emptyList())
     val scannedPages = _scannedPages.asStateFlow()
 
@@ -34,11 +28,6 @@ class ScannerViewModel : ViewModel() {
 
     fun initAnalytics(helper: AnalyticsHelper) {
         this.analyticsHelper = helper
-    }
-
-    fun onQuadDetected(points: List<Point>, width: Int, height: Int) {
-        _quadCoordinates.value = points
-        _imageSize.value = width to height
     }
 
     fun addPage(page: ScannedPage) {
