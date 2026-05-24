@@ -8,10 +8,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.t2h.ocr.R
 
 @Composable
 fun PermissionRationale(
@@ -38,9 +40,9 @@ fun PermissionRationale(
                 modifier = Modifier.size(72.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             Text(
                 text = title,
                 style = MaterialTheme.typography.headlineMedium,
@@ -48,9 +50,9 @@ fun PermissionRationale(
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodyLarge,
@@ -58,9 +60,9 @@ fun PermissionRationale(
                 textAlign = TextAlign.Center,
                 lineHeight = 24.sp
             )
-            
+
             Spacer(modifier = Modifier.height(48.dp))
-            
+
             Button(
                 onClick = onGrantClick,
                 modifier = Modifier.fillMaxWidth(),
@@ -69,19 +71,19 @@ fun PermissionRationale(
                 )
             ) {
                 Text(
-                    text = "Grant Permission",
+                    text = stringResource(R.string.permission_grant),
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             TextButton(
                 onClick = onDismissClick,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "Not Now",
+                    text = stringResource(R.string.permission_not_now),
                     color = MaterialTheme.colorScheme.primary
                 )
             }
@@ -95,9 +97,10 @@ fun CameraPermissionRationale(
     onDismissClick: () -> Unit
 ) {
     PermissionRationale(
-        title = "Camera Access Required",
-        description = "To scan documents and extract text in real-time, we need access to your camera. Your privacy is important; camera data is processed locally on your device.",
+        title = stringResource(R.string.permission_camera_title),
+        description = stringResource(R.string.permission_camera_description),
         onGrantClick = onGrantClick,
         onDismissClick = onDismissClick
     )
 }
+
