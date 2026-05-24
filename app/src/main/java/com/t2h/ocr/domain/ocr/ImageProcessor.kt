@@ -55,6 +55,23 @@ object ImageProcessor {
     }
 
     /**
+     * Helper to warp a Bitmap directly.
+     */
+    fun warpBitmap(input: android.graphics.Bitmap, corners: List<Point>): android.graphics.Bitmap {
+        val src = Mat()
+        org.opencv.android.Utils.bitmapToMat(input, src)
+        
+        val warped = warpPerspective(src, corners)
+        src.release()
+        
+        val output = android.graphics.Bitmap.createBitmap(warped.width(), warped.height(), android.graphics.Bitmap.Config.ARGB_8888)
+        org.opencv.android.Utils.matToBitmap(warped, output)
+        warped.release()
+        
+        return output
+    }
+
+    /**
      * Sorts corners in order: top-left, top-right, bottom-right, bottom-left.
      */
     private fun sortCorners(points: List<Point>): List<Point> {
