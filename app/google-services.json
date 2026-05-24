@@ -1,26 +1,44 @@
 {
   "project_info": {
-    "project_number": "640867640781",
-    "project_id": "ocrandroidproject",
-    "storage_bucket": "ocrandroidproject.firebasestorage.app"
+    "project_number": "759174019118",
+    "project_id": "ocrandroidapp-fd0a0",
+    "storage_bucket": "ocrandroidapp-fd0a0.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:640867640781:android:3ca24621a72bbc260c1084",
+        "mobilesdk_app_id": "1:759174019118:android:d386428d9d95e5d8db47bf",
         "android_client_info": {
           "package_name": "com.t2h.ocr"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "759174019118-ffp7hse6g7kf50usgk9ugoa4ujb6ufou.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.t2h.ocr",
+            "certificate_hash": "f33afeb18b1b9b469d46eb9704f8ad61a8dbddef"
+          }
+        },
+        {
+          "client_id": "759174019118-voeqf7jsh7o6brp5rk6cen1bdsvidpvn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyCiEC3ISStPPMuY_36AiRrd_3YDZsTnxHI"
+          "current_key": "AIzaSyAj8LtvHV-IBb_zRn2gHxt200z3k92JyyE"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "759174019118-voeqf7jsh7o6brp5rk6cen1bdsvidpvn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
