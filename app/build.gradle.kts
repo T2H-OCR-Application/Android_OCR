@@ -2,18 +2,13 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     //  Firebase
-    id("com.android.application")
     id("com.google.gms.google-services")
-    id("org.jetbrains.kotlin.android")
+
 }
 
 android {
     namespace = "com.t2h.ocr"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.t2h.ocr"
@@ -59,12 +54,25 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-    //  Firebase
+
+    //navigation
+    implementation("androidx.navigation:navigation-compose:2.8.0")
+    // Firebase Auth (cần cho Google Sign-In kết hợp Firebase)
     implementation(platform("com.google.firebase:firebase-bom:34.13.0"))
     implementation("com.google.firebase:firebase-analytics")
-    implementation("com.google.firebase:firebase-auth-ktx")
-    implementation("com.google.firebase:firebase-storage-ktx")
-    implementation("com.google.firebase:firebase-firestore-ktx")
-    implementation("com.google.mlkit:text-recognition:16.0.0")
+    implementation("com.google.firebase:firebase-auth")
+
+// Coroutines cho async
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
+
+// ViewModel + Lifecycle
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.0")
+    // Google Sign-In mới (Credential Manager)
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    //  Firebase
+
 
 }
