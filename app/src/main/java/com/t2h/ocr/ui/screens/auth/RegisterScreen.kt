@@ -37,9 +37,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.t2h.ocr.R
-import com.t2h.ocr.ui.components.AuthTextField
-import com.t2h.ocr.ui.components.GoogleAuthObserver
-import com.t2h.ocr.ui.components.GoogleButton
+import com.t2h.ocr.ui.components.auth_components.AuthTextField
+import com.t2h.ocr.ui.components.auth_components.GoogleAuthObserver
+import com.t2h.ocr.ui.components.auth_components.GoogleButton
 import com.t2h.ocr.ui.screens.validator.AuthValidator
 import com.t2h.ocr.ui.viewmodel.RegisterViewModel
 
@@ -187,7 +187,7 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text      = "-----OR-----",
+                text      = "-----Hoặc-----",
                 fontSize  = 20.sp,
                 modifier  = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
@@ -197,7 +197,7 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text      = "Continue with",
+                text      = "Đăng kí với",
                 fontSize  = 16.sp,
                 modifier  = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
@@ -214,7 +214,7 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text     = "Already have an account? Login",
+                text     = "Bạn đã có tài khoản? Đăng nhập",
                 color    = Color.White,
                 modifier = Modifier.clickable { onNavigateToLogin() },
             )

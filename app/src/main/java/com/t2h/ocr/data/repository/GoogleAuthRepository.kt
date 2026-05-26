@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -21,42 +23,51 @@ class GoogleAuthRepository(private val context: Context) {
 
     suspend fun signInWithGoogle(activityContext: Context): Result<FirebaseUser> {
         return try {
-            // 1. Tạo request Google ID token
+            // 1 request duy nhất — gộp cả 2 option:
+            //   GetGoogleIdOption      → hiện tài khoản có sẵn trên máy
+            //   GetSignInWithGoogleOption → thêm nút "Dùng tài khoản khác"
             val googleIdOption = GetGoogleIdOption.Builder()
-                .setFilterByAuthorizedAccounts(false) // false = cho phép chọn tài khoản mới
+                .setFilterByAuthorizedAccounts(false)
                 .setServerClientId(WEB_CLIENT_ID)
+                .build()
+
+            val signInWithGoogleOption = GetSignInWithGoogleOption
+                .Builder(WEB_CLIENT_ID)
                 .build()
 
             val request = GetCredentialRequest.Builder()
                 .addCredentialOption(googleIdOption)
+                .addCredentialOption(signInWithGoogleOption)
                 .build()
 
-            // 2. Mở bottom sheet chọn tài khoản Google
             val result = credentialManager.getCredential(
                 request = request,
-                context = activityContext  // phải là Activity context
+                context = activityContext,
             )
 
-            // 3. Lấy ID token từ kết quả
-            val credential = result.credential
-            if (credential is CustomCredential &&
-                credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
-            ) {
-                val googleIdToken = GoogleIdTokenCredential
-                    .createFrom(credential.data)
-                    .idToken
+            firebaseAuthWithCredential(result.credential)
 
-                // 4. Xác thực với Firebase
-                val firebaseCredential = GoogleAuthProvider.getCredential(googleIdToken, null)
-                val authResult = auth.signInWithCredential(firebaseCredential).await()
-                Result.success(authResult.user!!)
-            } else {
-                Result.failure(Exception("Credential không hợp lệ"))
-            }
+        } catch (e: GetCredentialCancellationException) {
+            Result.failure(Exception("Đã hủy đăng nhập"))
         } catch (e: GetCredentialException) {
             Result.failure(e)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    private suspend fun firebaseAuthWithCredential(
+        credential: androidx.credentials.Credential,
+    ): Result<FirebaseUser> {
+        return if (credential is CustomCredential &&
+            credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+        ) {
+            val idToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
+            val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
+            val authResult = auth.signInWithCredential(firebaseCredential).await()
+            Result.success(authResult.user!!)
+        } else {
+            Result.failure(Exception("Credential không hợp lệ"))
         }
     }
 
@@ -65,10 +76,7 @@ class GoogleAuthRepository(private val context: Context) {
     }
 
     companion object {
-        // Lấy từ Firebase Console → Project Settings → Web API Key
-        // hoặc từ google-services.json → oauth_client → client_type: 3 → client_id
         private const val WEB_CLIENT_ID =
             "759174019118-voeqf7jsh7o6brp5rk6cen1bdsvidpvn.apps.googleusercontent.com"
-
     }
 }

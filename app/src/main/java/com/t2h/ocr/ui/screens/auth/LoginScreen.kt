@@ -38,20 +38,14 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.t2h.ocr.R
-import com.t2h.ocr.ui.components.AuthTextField
-import com.t2h.ocr.ui.components.GoogleAuthObserver
-import com.t2h.ocr.ui.components.GoogleButton
+import com.t2h.ocr.ui.components.auth_components.AuthTextField
+import com.t2h.ocr.ui.components.auth_components.GoogleAuthObserver
+import com.t2h.ocr.ui.components.auth_components.GoogleButton
 import com.t2h.ocr.ui.screens.validator.AuthValidator
 import com.t2h.ocr.ui.viewmodel.LoginViewModel
 
 /**
  * Màn hình đăng nhập.
- *
- * Screen không giữ NavController — mọi điều hướng đều qua callback,
- * để AppNavigation là nơi duy nhất quyết định luồng chuyển màn hình.
- *
- * @param onNavigateToRegister  Chuyển sang màn hình đăng ký
- * @param onAuthSuccess         Đăng nhập thành công → vào Main
  */
 @Composable
 fun LoginScreen(
@@ -62,7 +56,6 @@ fun LoginScreen(
     val googleAuthState by viewModel.googleAuthState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // Google Sign-In thành công → gọi callback lên AppNavigation
     GoogleAuthObserver(
         state   = googleAuthState,
         onSuccess = {
@@ -156,7 +149,7 @@ fun LoginScreen(
                     emailError    = AuthValidator.validateEmail(email)
                     passwordError = AuthValidator.validatePassword(password)
                     if (emailError.isEmpty() && passwordError.isEmpty()) {
-                        // TODO: Firebase signInWithEmailAndPassword → gọi onAuthSuccess trong callback
+                        // TODO: Firebase signInWithEmailAndPassword
                         onAuthSuccess()
                     }
                     isLoading = false
@@ -176,7 +169,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text      = "-----OR-----",
+                text      = "-----Hoặc-----",
                 fontSize  = 20.sp,
                 modifier  = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
@@ -186,7 +179,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text      = "Continue with",
+                text      = "Đăng nhập với",
                 fontSize  = 16.sp,
                 modifier  = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center,
@@ -203,7 +196,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text     = "Don't have an account? Sign up",
+                text     = "Bạn chưa có tài khoản? Đăng ký",
                 color    = Color.White,
                 modifier = Modifier.clickable { onNavigateToRegister() },
             )
