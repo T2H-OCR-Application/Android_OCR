@@ -51,6 +51,8 @@ import com.t2h.ocr.ui.scanner.ScannerScreen
 import com.t2h.ocr.ui.scanner.ScannerViewModel
 import com.t2h.ocr.ui.theme.AndroidOCRTheme
 import com.t2h.ocr.domain.observability.AnalyticsHelper
+import com.t2h.ocr.ui.home.HistoryItemData
+import com.t2h.ocr.ui.home.HistoryScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -70,6 +72,7 @@ sealed class Screen {
     object Loading : Screen()
     object Login : Screen()
     object Home : Screen()
+    object History : Screen()
     object Permission : Screen()
     object Scanner : Screen()
     object Profile : Screen()
@@ -110,7 +113,7 @@ class MainActivity : ComponentActivity() {
                     val scope = rememberCoroutineScope()
                     val currentUser by authRepository.currentUser.collectAsState(initial = FirebaseAuth.getInstance().currentUser)
 
-                    var currentScreen by remember { mutableStateOf<Screen>(Screen.Login) }
+                    var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
                     var isProcessing by remember { mutableStateOf(false) }
                     
                     // Core Data Layer
@@ -183,20 +186,67 @@ class MainActivity : ComponentActivity() {
 
                             Screen.Home -> {
                                 HomeScreen(
-                                    viewModel = homeViewModel,
-                                    onScanClick = { scan ->
+                                    onNavigateToSection = { sectionName ->
+                                        when (sectionName) {
+                                            "Quét" -> {
+                                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                                    currentScreen = Screen.Scanner
+                                                } else {
+                                                    currentScreen = Screen.Permission
+                                                }
+                                            }
+                                            "Tệp" -> currentScreen = Screen.History
+                                            "Hồ sơ" -> currentScreen = Screen.Profile
+                                            "Cài đặt", "Công cụ" -> currentScreen = Screen.Settings
+                                        }
+                                    },
+                                    onCenterFabClick = {
+                                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                            currentScreen = Screen.Scanner
+                                        } else {
+                                            currentScreen = Screen.Permission
+                                        }
+                                    }
+                                )
+                            }
+
+                            Screen.History -> {
+                                val mockHistoryList = remember {
+                                    listOf(
+                                        HistoryItemData("1", "Ảnh thiên nhiên lúa bậc thang", "Hôm qua", null),
+                                        HistoryItemData("2", "Ảnh thiên nhiên lúa bậc thang", "Hôm qua", null),
+                                        HistoryItemData("3", "Ảnh thiên nhiên lúa bậc thang", "Hôm qua", null),
+                                        HistoryItemData(
+                                            "4",
+                                            "Ảnh thiên nhiên lúa bậc thang",
+                                            "Hôm qua",
+                                            null
+                                        )
+                                    )
+                                }
+
+                                HistoryScreen(
+                                    historyList = mockHistoryList,
+                                    onItemClick = { item ->
+                                        // Khi click vào item cụ thể, chuyển sang màn kết quả OCR hiển thị nội dung text
                                         currentScreen = Screen.Results(
-                                            pages = listOf(scan.ocrText),
-                                            imagePath = scan.imagePath,
+                                            pages = listOf(item.title),
+                                            imagePath = item.imagePath ?: "",
                                             allImagePaths = emptyList()
                                         )
                                     },
-                                    onNewScanClick = {
-                                        if (ContextCompat.checkSelfPermission(
-                                                context,
-                                                Manifest.permission.CAMERA
-                                            ) == PackageManager.PERMISSION_GRANTED
-                                        ) {
+                                    onEditItemClick = { item ->
+                                        Log.d("Navigation", "Yêu cầu sửa đổi tiêu đề của item ID: ${item.id}")
+                                    },
+                                    onNavigateToSection = { sectionName ->
+                                        when (sectionName) {
+                                            "Trang chủ" -> currentScreen = Screen.Home
+                                            "Hồ sơ" -> currentScreen = Screen.Profile
+                                            "Công cụ" -> currentScreen = Screen.Settings
+                                        }
+                                    },
+                                    onCenterFabClick = {
+                                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                                             currentScreen = Screen.Scanner
                                         } else {
                                             currentScreen = Screen.Permission
@@ -237,12 +287,11 @@ class MainActivity : ComponentActivity() {
                             Screen.Profile -> {
                                 ProfileScreen(
                                     authRepository = authRepository,
-                                    onNavigateBack = {
-                                        currentScreen = Screen.Home
-                                    },
-                                    onNavigateToSettings = {
-                                        currentScreen = Screen.Settings
-                                    }
+                                    onNavigateBack = { currentScreen = Screen.Home },
+                                    onNavigateToSettings = { currentScreen = Screen.Settings },
+                                    onNavigateToHistory = { currentScreen = Screen.History },
+                                    onNavigateToHome = { currentScreen = Screen.Home },
+                                    onLogoutSuccess = { currentScreen = Screen.Login }
                                 )
                             }
 
