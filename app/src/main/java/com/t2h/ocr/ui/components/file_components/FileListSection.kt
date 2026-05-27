@@ -75,7 +75,7 @@ fun FileListSection(
             )
 
             Icon(
-                painter            = painterResource(R.drawable.bi_file_text),
+                painter            = painterResource(R.drawable.delete_file_main),
                 contentDescription = "Xóa tất cả",
                 modifier           = Modifier
                     .size(20.dp)

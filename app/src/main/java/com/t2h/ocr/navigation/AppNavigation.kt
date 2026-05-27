@@ -69,7 +69,13 @@ fun AppNavigation() {
             startDestination = NavRoutes.MAIN,
         ) {
             composable(NavRoutes.MAIN) {
-                MainScreen()
+                MainScreen(
+                    onSignOut = {
+                        rootNavController.navigate(NavRoutes.AUTH_GRAPH) {
+                            popUpTo(NavRoutes.MAIN_GRAPH) { inclusive = true }
+                        }
+                    }
+                )
             }
         }
     }

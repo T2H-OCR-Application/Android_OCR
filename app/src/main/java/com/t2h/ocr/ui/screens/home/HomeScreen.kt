@@ -39,27 +39,28 @@ import com.t2h.ocr.R
 import com.t2h.ocr.ui.viewmodel.HomeViewModel
 
 private data class QuickTool(
+    val id      : String,
     val label   : String,
     val iconRes : Int?,
-    val route   : String = "",
 )
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    onToolClick : (String) -> Unit = {},
+) {
     val viewModel: HomeViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { viewModel.loadRecentItems() }
 
     val quickTools = listOf(
-        QuickTool(label = "Quét",    iconRes = R.drawable.streamline_scanner_solid),
-        QuickTool(label = "Văn bản", iconRes = R.drawable.f7_doc_text),
-        QuickTool(label = "Tập tin", iconRes = R.drawable.codicon_new_file),
-        QuickTool(label = "PDF",     iconRes = R.drawable.fa7_regular_file_pdf),
-        QuickTool(label = "Ảnh",     iconRes = R.drawable.tabler_photo),
+        QuickTool(id = "scan",  label = "Quét",    iconRes = R.drawable.streamline_scanner_solid),
+        QuickTool(id = "text",  label = "Văn bản", iconRes = R.drawable.f7_doc_text),
+        QuickTool(id = "file",  label = "Tập tin", iconRes = R.drawable.codicon_new_file),
+        QuickTool(id = "pdf",   label = "PDF",     iconRes = R.drawable.fa7_regular_file_pdf),
+        QuickTool(id = "image", label = "Ảnh",     iconRes = R.drawable.tabler_photo),
     )
 
-    // Bỏ verticalScroll — dùng Column với weight để RecentSection fill đúng
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -67,12 +68,12 @@ fun HomeScreen() {
     ) {
         Spacer(modifier = Modifier.height(8.dp))
 
-        // ── Lưới công cụ nhanh (cố định, không scroll) ──────────────────
-        QuickToolGrid(tools = quickTools)
+        // ── Lưới công cụ nhanh ──────────────────────────────────────────
+        QuickToolGrid(tools = quickTools, onToolClick = onToolClick)
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // ── Section Gần Đây: weight(1f) → fill toàn bộ phần còn lại ────
+        // ── Section Gần Đây ──────────────────────────────────────────────
         RecentSection(
             uiState        = uiState,
             onAddDataClick = { /* TODO */ },
@@ -89,7 +90,10 @@ fun HomeScreen() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun QuickToolGrid(tools: List<QuickTool>) {
+private fun QuickToolGrid(
+    tools       : List<QuickTool>,
+    onToolClick : (String) -> Unit,
+) {
     val rows = tools.chunked(3)
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         rows.forEach { row ->
@@ -98,7 +102,11 @@ private fun QuickToolGrid(tools: List<QuickTool>) {
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 row.forEach { tool ->
-                    QuickToolItem(tool = tool, modifier = Modifier.weight(1f))
+                    QuickToolItem(
+                        tool        = tool,
+                        onToolClick = onToolClick,
+                        modifier    = Modifier.weight(1f),
+                    )
                 }
                 repeat(3 - row.size) {
                     Spacer(modifier = Modifier.weight(1f))
@@ -109,7 +117,11 @@ private fun QuickToolGrid(tools: List<QuickTool>) {
 }
 
 @Composable
-private fun QuickToolItem(tool: QuickTool, modifier: Modifier = Modifier) {
+private fun QuickToolItem(
+    tool        : QuickTool,
+    onToolClick : (String) -> Unit,
+    modifier    : Modifier = Modifier,
+) {
     Column(
         modifier            = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -123,8 +135,9 @@ private fun QuickToolItem(tool: QuickTool, modifier: Modifier = Modifier) {
                 .background(colorResource(R.color.bg_color))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                ) { /* TODO: navigate */ },
+                    indication        = null,
+                    onClick           = { onToolClick(tool.id) },
+                ),
         ) {
             if (tool.iconRes != null) {
                 Icon(
@@ -159,7 +172,7 @@ private fun RecentSection(
     uiState        : HomeUiState,
     onAddDataClick : () -> Unit,
     onViewAllClick : () -> Unit,
-    modifier       : Modifier = Modifier,   // nhận weight(1f) từ parent
+    modifier       : Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
@@ -173,7 +186,6 @@ private fun RecentSection(
             .background(colorResource(R.color.bg_color))
             .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {
-        // Header
         Row(
             modifier              = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -199,7 +211,6 @@ private fun RecentSection(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Body — fillMaxSize hoạt động đúng vì parent đã có kích thước xác định
         when (uiState) {
             is HomeUiState.Loading ->
                 Box(
@@ -213,7 +224,6 @@ private fun RecentSection(
                 if (uiState.recentItems.isEmpty()) {
                     EmptyState(onAddDataClick = onAddDataClick)
                 } else {
-                    // TODO: LazyColumn danh sách recentItems
                     uiState.recentItems.forEach { item ->
                         Text(text = item.title, color = Color.White, fontSize = 13.sp)
                     }

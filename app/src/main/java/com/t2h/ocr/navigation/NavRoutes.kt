@@ -17,4 +17,8 @@ object NavRoutes {
     const val SCAN    = "scan"
     const val TOOLS   = "tools"
     const val PROFILE = "profile"
+
+    // ── Sub screens ──
+    const val SEARCH     = "search"
+    const val TEXT_FILES = "text_files"
 }

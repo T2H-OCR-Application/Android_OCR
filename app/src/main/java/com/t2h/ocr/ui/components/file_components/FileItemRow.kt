@@ -61,7 +61,7 @@ fun FileItemRow(
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        // ── Thumbnail placeholder (56×56) ───────────────────────────────
+
         Box(
             modifier = Modifier
                 .size(56.dp)
