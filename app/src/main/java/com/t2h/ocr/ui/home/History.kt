@@ -1,11 +1,11 @@
 package com.t2h.ocr.ui.home
 
-import android.util.Log
-import androidx.compose.foundation.BorderStroke // 👈 Đã thêm import chuẩn để sửa lỗi BoxStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,15 +16,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.t2h.ocr.R
+import java.io.File
+
+// Model dữ liệu mẫu phù hợp với cấu trúc OCR của bạn
+data class HistoryItemData(
+    val id: String,
+    val title: String,
+    val timeString: String, // Ví dụ: "Hôm qua", "2 giờ trước"
+    val imagePath: String? = null
+)
 
 @Composable
-fun HomeScreen(
+fun HistoryScreen(
+    historyList: List<HistoryItemData> = emptyList(), // Truyền danh sách từ ViewModel vào đây
+    onItemClick: (HistoryItemData) -> Unit = {},
+    onEditItemClick: (HistoryItemData) -> Unit = {},
     onNavigateToSection: (String) -> Unit = {},
     onCenterFabClick: () -> Unit = {}
 ) {
@@ -33,13 +47,13 @@ fun HomeScreen(
 
     Scaffold(
         bottomBar = {
-            HomeBottomNavigation(
+            HistoryBottomNavigation(
                 currentTab = currentTab,
                 onTabSelected = { currentTab = it },
                 onCenterClick = onCenterFabClick
             )
         },
-        containerColor = Color(0xFF1A1D24)
+        containerColor = Color(0xFF1A1D24) // Nền tối ngoài cùng hệ thống
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -77,58 +91,21 @@ fun HomeScreen(
                 }
             }
 
-            // 2. LƯỚI CHỨC NĂNG (QUÉT, VĂN BẢN, AI, TẬP TIN, PDF, ẢNH, TẤT CẢ)
-            val categories = listOf(
-                CategoryItem("Quét", R.drawable.streamline_scanner_solid),
-                CategoryItem("Văn bản", R.drawable.f7_doc_text),
-                CategoryItem("AI", R.drawable.mingcute_ai_line),
-                CategoryItem("Tập tin", R.drawable.icon_add_file),
-                CategoryItem("PDF", R.drawable.pdf_icon),
-                CategoryItem("Ảnh", R.drawable.photo),
-                CategoryItem("Tất cả", R.drawable.material_symbols_border_all_rounded)
-            )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                categories.take(4).forEach { category ->
-                    CategoryButton(category = category, onClick = { onNavigateToSection(category.title) })
-                }
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(28.dp)
-            ) {
-                categories.drop(4).forEach { category ->
-                    CategoryButton(category = category, onClick = { onNavigateToSection(category.title) })
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // 3. VÙNG HIỂN THỊ DANH SÁCH "GẦN ĐÂY"
+            // 2. VÙNG KHUNG CHỨA DANH SÁCH "GẦN ĐÂY" ĐỔ DỌC
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color(0xFF252329))
             ) {
-                Column(
-                    modifier = Modifier.fillMaxSize()
-                ) {
+                Column(modifier = Modifier.fillMaxSize()) {
                     // Header Gần đây
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, top = 16.dp),
+                            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -146,40 +123,28 @@ fun HomeScreen(
                         )
                     }
 
-                    // Trạng thái trống (Không có dữ liệu)
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.bi_file_text),
-                            contentDescription = "No Data",
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Không có dữ liệu",
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // ĐÃ SỬA: Thay đổi BoxStroke thành BorderStroke và dọn sạch padding lỗi
-                        Surface(
-                            onClick = { /* Xử lý thêm dữ liệu */ },
-                            color = Color.Transparent,
-                            shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, Color(0xFF14B8A6))
+                    // Danh sách cuộn mượt bằng LazyColumn
+                    if (historyList.isEmpty()) {
+                        // Trạng thái dự phòng nếu danh sách trống dữ liệu
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = "Thêm dữ liệu",
-                                color = Color(0xFF14B8A6),
-                                fontSize = 14.sp,
-                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                            )
+                            Text(text = "Không có dữ liệu gần đây", color = Color.Gray, fontSize = 14.sp)
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(historyList, key = { it.id }) { item ->
+                                HistoryRowItem(
+                                    item = item,
+                                    onClick = { onItemClick(item) },
+                                    onEditClick = { onEditItemClick(item) }
+                                )
+                            }
                         }
                     }
                 }
@@ -188,47 +153,104 @@ fun HomeScreen(
     }
 }
 
-// --- COMPONENT NÚT CHỨC NĂNG PHÂN LOẠI ---
-data class CategoryItem(val title: String, val iconRes: Int)
-
+// --- COMPONENT CON CHO MỖI DÒNG LỊCH SỬ QUÉT ---
 @Composable
-private fun CategoryButton(
-    category: CategoryItem,
-    onClick: () -> Unit
+private fun HistoryRowItem(
+    item: HistoryItemData,
+    onClick: () -> Unit,
+    onEditClick: () -> Unit
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Row(
         modifier = Modifier
-            .width(68.dp)
+            .fillMaxWidth()
+            .height(76.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF1E293B)) // Nền xanh đen tối của thẻ item theo ảnh mẫu
             .clickable { onClick() }
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF252329)),
-            contentAlignment = Alignment.Center
-        ) {
+        // Khối hiển thị ảnh đại diện bên trái
+        if (!item.imagePath.isNullOrBlank()) {
             Image(
-                painter = painterResource(id = category.iconRes),
-                contentDescription = category.title,
-                modifier = Modifier.size(24.dp)
+                painter = rememberAsyncImagePainter(File(item.imagePath)),
+                contentDescription = "Scanned Image",
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            // Nếu không có ảnh -> Hiển thị ô vuông màu trắng nhạt chuẩn theo yêu cầu của bạn
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.White.copy(alpha = 0.15f))
             )
         }
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = category.title,
-            color = Color.LightGray,
-            fontSize = 11.sp,
-            textAlign = TextAlign.Center,
-            maxLines = 1
-        )
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        // Cột chứa thông tin văn bản tiêu đề và thời gian
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.Center
+        ) {
+            // Hàng tiêu đề + Nút sửa đổi nhỏ bên cạnh
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = item.title,
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                // Icon chỉnh sửa nhỏ cạnh tiêu đề (Giống hình cái bảng viết vẽ trong ảnh của bạn)
+                Icon(
+                    painter = painterResource(id = R.drawable.codicon_new_file), // Hoặc map icon edit tùy ý trong drawable của bạn
+                    contentDescription = "Edit title",
+                    tint = Color.LightGray.copy(alpha = 0.6f),
+                    modifier = Modifier
+                        .size(14.dp)
+                        .clickable { onEditClick() }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Hàng hiển thị thời gian quét kèm icon đồng hồ
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.tabler_photo_plus), // Dùng icon thời gian/đồng hồ phù hợp
+                    contentDescription = "Time icon",
+                    tint = Color(0xFF3B82F6), // Màu xanh lam dịu nhẹ đổ bóng icon thời gian theo mẫu
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = item.timeString,
+                    color = Color.Gray.copy(alpha = 0.8f),
+                    fontSize = 12.sp
+                )
+            }
+        }
     }
 }
 
-// --- COMPONENT THANH ĐIỀU HƯỚNG DƯỚI (BOTTOM NAVIGATION) TRÀN CẠNH ---
+// --- COMPONENT THANH ĐIỀU HƯỚNG DƯỚI (BOTTOM NAVIGATION) ---
 @Composable
-private fun HomeBottomNavigation(
+private fun HistoryBottomNavigation(
     currentTab: String,
     onTabSelected: (String) -> Unit,
     onCenterClick: () -> Unit
@@ -266,7 +288,7 @@ private fun HomeBottomNavigation(
                 onClick = { onTabSelected("Tệp") }
             )
 
-            // NÚT CHÍNH GIỮA NỔI BẬT
+            // NÚT CHÍNH GIỮA TRÒN XANH NGỌC CÓ ICON THÊM ẢNH (+)
             Box(
                 modifier = Modifier
                     .size(54.dp)
@@ -276,7 +298,7 @@ private fun HomeBottomNavigation(
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.tabler_photo_plus), // Dùng icon add file làm nút trung tâm
+                    painter = painterResource(id = R.drawable.tabler_photo_plus),
                     contentDescription = "Center Action",
                     modifier = Modifier.size(24.dp)
                 )
