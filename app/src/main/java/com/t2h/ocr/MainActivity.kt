@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.work.WorkManager
@@ -38,6 +39,8 @@ import com.t2h.ocr.ui.components.CameraPermissionRationale
 import com.t2h.ocr.ui.home.HomeScreen
 import com.t2h.ocr.ui.home.HomeViewModel
 import com.t2h.ocr.ui.home.HomeViewModelFactory
+import com.t2h.ocr.ui.login.LoginScreen
+import com.t2h.ocr.ui.login.RegisterScreen
 import com.t2h.ocr.ui.profile.ProfileScreen
 import com.t2h.ocr.ui.results.ResultsScreen
 import com.t2h.ocr.ui.results.ResultsViewModel
@@ -65,12 +68,14 @@ import java.util.UUID
  */
 sealed class Screen {
     object Loading : Screen()
+    object Login : Screen()
     object Home : Screen()
     object Permission : Screen()
     object Scanner : Screen()
     object Profile : Screen()
     object Settings : Screen()
     object Gallery : Screen()
+    object Register : Screen()
     data class Crop(val imagePath: String, val points: List<Point>) : Screen()
     data class Results(val pages: List<String>, val imagePath: String, val allImagePaths: List<String>) : Screen()
 }
@@ -104,8 +109,8 @@ class MainActivity : ComponentActivity() {
                     val context = LocalContext.current
                     val scope = rememberCoroutineScope()
                     val currentUser by authRepository.currentUser.collectAsState(initial = FirebaseAuth.getInstance().currentUser)
-                    
-                    var currentScreen by remember { mutableStateOf<Screen>(Screen.Loading) }
+
+                    var currentScreen by remember { mutableStateOf<Screen>(Screen.Login) }
                     var isProcessing by remember { mutableStateOf(false) }
                     
                     // Core Data Layer
@@ -255,6 +260,28 @@ class MainActivity : ComponentActivity() {
                                     viewModel = settingsViewModel,
                                     onBack = {
                                         currentScreen = Screen.Profile
+                                    }
+                                )
+                            }
+
+                            Screen.Login -> {
+                                LoginScreen(
+                                    onNavigateToRegister = {
+                                        currentScreen = Screen.Register
+                                    },
+                                    onAuthSuccess = {
+                                        currentScreen = Screen.Home
+                                    }
+                                )
+                            }
+
+                            Screen.Register -> {
+                                RegisterScreen(
+                                    onNavigateToLogin = {
+                                        currentScreen = Screen.Login
+                                    },
+                                    onRegisterSuccess = {
+                                        currentScreen = Screen.Home
                                     }
                                 )
                             }
