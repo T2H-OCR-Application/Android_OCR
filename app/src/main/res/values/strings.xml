@@ -1,3 +1,96 @@
 <resources>
-    <string name="app_name">FrontendAndroidOCR</string>
+    <string name="app_name">Android OCR</string>
+    <string name="default_web_client_id">640867640781-et954voeu0u4hg2us8s9lv75lubiskpp.apps.googleusercontent.com</string>
+
+    <!-- Errors -->
+    <string name="error_camera_title">Camera Unavailable</string>
+    <string name="error_camera_message">We couldn\'t initialize the camera. This might be due to hardware issues or denied permissions.</string>
+    <string name="error_camera_action">Try Again</string>
+    <string name="error_account_title">Account Required</string>
+    <string name="error_account_message">Your session has expired or the account is no longer valid. Please sign in to sync your scans.</string>
+    <string name="error_account_action">Sign In / Link Account</string>
+    <string name="error_sync_title">Critical Sync Error</string>
+    <string name="error_sync_message">A fatal error occurred during synchronization. Please check your internet connection or free up some space.</string>
+    <string name="error_sync_action">Retry Sync</string>
+
+    <!-- Permissions -->
+    <string name="permission_grant">Grant Permission</string>
+    <string name="permission_not_now">Not Now</string>
+    <string name="permission_camera_title">Camera Access Required</string>
+    <string name="permission_camera_description">To scan documents and extract text in real-time, we need access to your camera. Your privacy is important; camera data is processed locally on your device.</string>
+
+    <!-- Home -->
+    <string name="home_search_placeholder">Search scans…</string>
+    <string name="home_no_scans">No scans yet</string>
+    <string name="home_no_results">No results found</string>
+    <string name="home_new_scan">New Scan</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Profile</string>
+    <string name="profile_anonymous">Anonymous Account</string>
+    <string name="profile_linked">Linked Account</string>
+    <string name="profile_uid">UID: %1$s</string>
+    <string name="profile_email">Email: %1$s</string>
+    <string name="profile_link_google">Link Google Account</string>
+    <string name="profile_google_linked">Your account is linked to Google.</string>
+
+    <!-- Results -->
+    <string name="results_title_batch">Review Batch</string>
+    <string name="results_title_scan">Review Scan</string>
+    <string name="results_label_text">Recognized Text</string>
+    <string name="results_save_pdf">Save as PDF</string>
+
+    <!-- Crop -->
+    <string name="crop_cancel">Cancel</string>
+    <string name="crop_confirm">Confirm</string>
+
+    <!-- Gallery -->
+    <string name="gallery_title">Scanned Pages (%1$d)</string>
+    <string name="gallery_add_page">Add Page</string>
+    <string name="gallery_no_pages">No pages scanned yet.</string>
+    <string name="gallery_generate_pdf">Generate PDF</string>
+    <string name="gallery_remove_page">Remove</string>
+
+    <!-- Scanner -->
+    <string name="scanner_capture">Capture Document</string>
+    <string name="scanner_profile">Profile</string>
+    <string name="scanner_pages">Pages</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_resource_mgmt">Resource Management</string>
+    <string name="settings_wifi_sync_title">Wi-Fi Only Sync</string>
+    <string name="settings_wifi_sync_desc">Only sync documents when connected to Wi-Fi to save data.</string>
+    <string name="settings_clear_cache_sync_title">Clear Cache After Sync</string>
+    <string name="settings_clear_cache_sync_desc">Automatically delete local files after they are successfully synced to cloud.</string>
+    <string name="settings_storage">Storage</string>
+    <string name="settings_clear_cache_btn">Clear Local Cache</string>
+
+    <!-- Toasts & Common -->
+    <string name="common_back">Back</string>
+    <string name="common_initializing">Initializing session…</string>
+    <string name="common_delete">Delete</string>
+    <string name="toast_account_linked">Account linked successfully!</string>
+    <string name="toast_link_failed">Failed to link account with Firebase. Check your network or Firebase Console.</string>
+    <string name="toast_google_failed_token">Google Sign-In failed: No ID Token returned. This usually means the Web Client ID is incorrect or not for this project.</string>
+    <string name="toast_google_failed_status">Google Sign-In failed (Status Code: %1$d). Details: %2$s</string>
+    <string name="toast_google_failed_result">Google Sign-In failed with result code: %1$d</string>
+    <string name="toast_sign_in_cancelled">Sign-in cancelled</string>
+    <string name="toast_cache_cleared">Local cache cleared</string>
+    <string name="toast_cache_clear_failed">Failed to clear cache</string>
+
+    <!-- Sync Status Labels -->
+    <string name="sync_status_syncing">Syncing…</string>
+    <string name="sync_status_waiting">Waiting for Network</string>
+    <string name="sync_status_failed">Sync Failed</string>
+    <string name="sync_status_success">Syncing Successful</string>
+
+    <!-- Sync Notifications -->
+    <string name="sync_notification_channel_name">Scan Synchronization</string>
+    <string name="sync_notification_title">Syncing to Cloud</string>
+    <string name="sync_notification_connecting">Connecting to services…</string>
+    <string name="sync_notification_uploading">Uploading to Google Drive…</string>
+    <string name="sync_notification_saving">Saving Successful</string>
+    <string name="sync_notification_complete_title">Sync Complete</string>
+    <string name="sync_notification_complete_text">Document successfully saved to cloud</string>
 </resources>

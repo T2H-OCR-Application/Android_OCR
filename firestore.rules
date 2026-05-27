@@ -1,0 +1,20 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Per-user isolation for scans
+    match /users/{userId}/scans/{scanId} {
+      allow read, delete: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // Last Writer Wins (LWW) based on updatedAt timestamp
+      allow update: if request.auth != null && request.auth.uid == userId &&
+                    request.resource.data.updatedAt > resource.data.updatedAt;
+    }
+    
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

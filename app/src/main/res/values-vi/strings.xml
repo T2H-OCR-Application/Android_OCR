@@ -1,0 +1,95 @@
+<resources>
+    <string name="app_name">Android OCR</string>
+    
+    <!-- Errors -->
+    <string name="error_camera_title">Camera không khả dụng</string>
+    <string name="error_camera_message">Chúng tôi không thể khởi tạo camera. Điều này có thể do vấn đề phần cứng hoặc quyền bị từ chối.</string>
+    <string name="error_camera_action">Thử lại</string>
+    <string name="error_account_title">Yêu cầu tài khoản</string>
+    <string name="error_account_message">Phiên của bạn đã hết hạn hoặc tài khoản không còn hợp lệ. Vui lòng đăng nhập để đồng bộ hóa các bản quét của bạn.</string>
+    <string name="error_account_action">Đăng nhập / Liên kết tài khoản</string>
+    <string name="error_sync_title">Lỗi đồng bộ hóa nghiêm trọng</string>
+    <string name="error_sync_message">Một lỗi nghiêm trọng đã xảy ra trong quá trình đồng bộ hóa. Vui lòng kiểm tra kết nối internet của bạn hoặc giải phóng một số dung lượng.</string>
+    <string name="error_sync_action">Thử lại đồng bộ hóa</string>
+
+    <!-- Permissions -->
+    <string name="permission_grant">Cấp quyền</string>
+    <string name="permission_not_now">Để sau</string>
+    <string name="permission_camera_title">Yêu cầu quyền truy cập Camera</string>
+    <string name="permission_camera_description">Để quét tài liệu và trích xuất văn bản trong thời gian thực, chúng tôi cần quyền truy cập vào camera của bạn. Quyền riêng tư của bạn rất quan trọng; dữ liệu camera được xử lý cục bộ trên thiết bị của bạn.</string>
+
+    <!-- Home -->
+    <string name="home_search_placeholder">Tìm kiếm bản quét…</string>
+    <string name="home_no_scans">Chưa có bản quét nào</string>
+    <string name="home_no_results">Không tìm thấy kết quả</string>
+    <string name="home_new_scan">Quét mới</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Hồ sơ</string>
+    <string name="profile_anonymous">Tài khoản ẩn danh</string>
+    <string name="profile_linked">Tài khoản đã liên kết</string>
+    <string name="profile_uid">UID: %1$s</string>
+    <string name="profile_email">Email: %1$s</string>
+    <string name="profile_link_google">Liên kết tài khoản Google</string>
+    <string name="profile_google_linked">Tài khoản của bạn đã được liên kết với Google.</string>
+
+    <!-- Results -->
+    <string name="results_title_batch">Xem lại nhóm</string>
+    <string name="results_title_scan">Xem lại bản quét</string>
+    <string name="results_label_text">Văn bản đã nhận diện</string>
+    <string name="results_save_pdf">Lưu dưới dạng PDF</string>
+
+    <!-- Crop -->
+    <string name="crop_cancel">Hủy</string>
+    <string name="crop_confirm">Xác nhận</string>
+
+    <!-- Gallery -->
+    <string name="gallery_title">Trang đã quét (%1$d)</string>
+    <string name="gallery_add_page">Thêm trang</string>
+    <string name="gallery_no_pages">Chưa có trang nào được quét.</string>
+    <string name="gallery_generate_pdf">Tạo PDF</string>
+    <string name="gallery_remove_page">Xóa</string>
+
+    <!-- Scanner -->
+    <string name="scanner_capture">Chụp tài liệu</string>
+    <string name="scanner_profile">Hồ sơ</string>
+    <string name="scanner_pages">Trang</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Cài đặt</string>
+    <string name="settings_resource_mgmt">Quản lý tài nguyên</string>
+    <string name="settings_wifi_sync_title">Chỉ đồng bộ hóa qua Wi-Fi</string>
+    <string name="settings_wifi_sync_desc">Chỉ đồng bộ hóa tài liệu khi kết nối Wi-Fi để tiết kiệm dữ liệu.</string>
+    <string name="settings_clear_cache_sync_title">Xóa bộ nhớ đệm sau khi đồng bộ</string>
+    <string name="settings_clear_cache_sync_desc">Tự động xóa các tệp cục bộ sau khi chúng được đồng bộ hóa thành công lên đám mây.</string>
+    <string name="settings_storage">Lưu trữ</string>
+    <string name="settings_clear_cache_btn">Xóa bộ nhớ đệm cục bộ</string>
+
+    <!-- Toasts & Common -->
+    <string name="common_back">Quay lại</string>
+    <string name="common_initializing">Đang khởi tạo phiên…</string>
+    <string name="common_delete">Xóa</string>
+    <string name="toast_account_linked">Liên kết tài khoản thành công!</string>
+    <string name="toast_link_failed">Liên kết tài khoản với Firebase thất bại. Kiểm tra mạng hoặc Firebase Console.</string>
+    <string name="toast_google_failed_token">Đăng nhập Google thất bại: Không có ID Token được trả về.</string>
+    <string name="toast_google_failed_status">Đăng nhập Google thất bại (Mã trạng thái: %1$d). Chi tiết: %2$s</string>
+    <string name="toast_google_failed_result">Đăng nhập Google thất bại với mã kết quả: %1$d</string>
+    <string name="toast_sign_in_cancelled">Đã hủy đăng nhập</string>
+    <string name="toast_cache_cleared">Đã xóa bộ nhớ đệm cục bộ</string>
+    <string name="toast_cache_clear_failed">Xóa bộ nhớ đệm thất bại</string>
+
+    <!-- Sync Status Labels -->
+    <string name="sync_status_syncing">Đang đồng bộ…</string>
+    <string name="sync_status_waiting">Đang chờ mạng</string>
+    <string name="sync_status_failed">Đồng bộ thất bại</string>
+    <string name="sync_status_success">Đồng bộ thành công</string>
+
+    <!-- Sync Notifications -->
+    <string name="sync_notification_channel_name">Đồng bộ hóa bản quét</string>
+    <string name="sync_notification_title">Đang đồng bộ lên đám mây</string>
+    <string name="sync_notification_connecting">Đang kết nối tới dịch vụ…</string>
+    <string name="sync_notification_uploading">Đang tải lên Google Drive…</string>
+    <string name="sync_notification_saving">Lưu thành công</string>
+    <string name="sync_notification_complete_title">Đồng bộ hoàn tất</string>
+    <string name="sync_notification_complete_text">Tài liệu đã được lưu thành công lên đám mây</string>
+</resources>
