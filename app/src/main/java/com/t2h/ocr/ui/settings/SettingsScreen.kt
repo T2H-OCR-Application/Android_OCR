@@ -9,8 +9,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,16 +27,18 @@ import com.t2h.ocr.R
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
-    onBack: () -> Unit,
+    onBack: () -> Unit, // Giữ ở tham số để tránh lỗi biên dịch ở MainActivity nếu chưa xóa
     onNavigateToHome: () -> Unit = {},
     onNavigateToHistory: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
-    onNavigateToScanner: () -> Unit = {} // Gọi khi bấm quét nhanh/chụp ảnh
+    onNavigateToScanner: () -> Unit = {} // Callback mở camera chụp ảnh giống trang chủ
 ) {
     val syncWifiOnly by viewModel.syncWifiOnly.collectAsState()
     val clearCacheOnSync by viewModel.clearCacheOnSync.collectAsState()
     val context = LocalContext.current
-    var currentTab by remember { mutableStateOf("Công cụ") }
+
+    // Cố định Tab hiện tại luôn là "Công cụ" để sáng đúng icon
+    val currentTab = "Công cụ"
 
     Scaffold(
         topBar = {
@@ -51,29 +51,23 @@ fun SettingsScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.common_back),
-                            tint = Color.White
-                        )
-                    }
-                },
+                // ─── ĐÃ XÓA HOÀN TOÀN KHỐI navigationIcon (MŨI TÊN) TẠI ĐÂY ───
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF1A1D24))
             )
         },
         bottomBar = {
             SettingsBottomNavigation(
                 currentTab = currentTab,
-                onTabSelected = {
-                    currentTab = it
-                    when (it) {
+                onTabSelected = { tabName ->
+                    // ─── ĐÃ SỬA: Chuyển đổi tab chuẩn xác ───
+                    when (tabName) {
                         "Trang chủ" -> onNavigateToHome()
                         "Tệp" -> onNavigateToHistory()
+                        "Công cụ" -> { /* Đang ở chính nó, không xử lý lại */ }
                         "Hồ sơ" -> onNavigateToProfile()
                     }
                 },
+                // ─── ĐÃ SỬA: Gán sự kiện mở Camera quét cho nút tròn giữa ───
                 onCenterClick = onNavigateToScanner
             )
         },
@@ -92,7 +86,7 @@ fun SettingsScreen(
             // ─── PHẦN 1: KHỐI BENTO CÔNG CỤ XỬ LÝ ───
             Text(
                 text = "Công cụ OCR & Tiện ích",
-                color = Color(0xFF14B8A6), // Màu xanh ngọc thương hiệu
+                color = Color(0xFF14B8A6),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 4.dp)
@@ -106,16 +100,14 @@ fun SettingsScreen(
                     .padding(vertical = 4.dp)
             ) {
                 Column {
-                    // 1. Công cụ Quét văn bản nhanh
                     ToolsMenuItem(
-                        iconRes = R.drawable.material_symbols_border_all_rounded, // Tận dụng icon ô vuông/quét
+                        iconRes = R.drawable.material_symbols_border_all_rounded,
                         title = "Quét tài liệu nhanh",
                         subtitle = "Nhận diện chữ tự động qua Camera AI",
                         onClick = onNavigateToScanner
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color.White.copy(alpha = 0.06f))
 
-                    // 2. Công cụ Chụp ảnh / Nhập từ thư viện
                     ToolsMenuItem(
                         iconRes = R.drawable.tabler_photo_plus,
                         title = "Chụp & Nhập hình ảnh",
@@ -124,7 +116,6 @@ fun SettingsScreen(
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color.White.copy(alpha = 0.06f))
 
-                    // 3. Công cụ chuyển đổi định dạng tài liệu (PDF, Word, Docx)
                     ToolsMenuItem(
                         iconRes = R.drawable.mingcute_document_line,
                         title = "Chuyển đổi sang định dạng khác",
@@ -153,18 +144,16 @@ fun SettingsScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Column {
-                    // Wi-Fi Only Sync Toggle
                     SettingsToggleItem(
                         title = stringResource(R.string.settings_wifi_sync_title),
                         description = stringResource(R.string.settings_wifi_sync_desc),
-                        iconRes = R.drawable.tdesign_tools_circle, // Hoặc thay bằng icon Wifi nếu bạn có
+                        iconRes = R.drawable.tdesign_tools_circle,
                         checked = syncWifiOnly,
                         onCheckedChange = { viewModel.setSyncWifiOnly(it) }
                     )
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.White.copy(alpha = 0.06f))
 
-                    // Clear Cache on Sync Toggle
                     SettingsToggleItem(
                         title = stringResource(R.string.settings_clear_cache_sync_title),
                         description = stringResource(R.string.settings_clear_cache_sync_desc),
@@ -184,7 +173,7 @@ fun SettingsScreen(
                     .fillMaxWidth()
                     .height(50.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFEF4444).copy(alpha = 0.1f)) // Màu đỏ mờ tinh tế
+                    .background(Color(0xFFEF4444).copy(alpha = 0.1f))
                     .clickable {
                         val success = viewModel.clearLocalCache()
                         if (success) {
@@ -207,7 +196,6 @@ fun SettingsScreen(
     }
 }
 
-// --- DÒNG ITEM CHO MỤC CÔNG CỤ (MENU CLICK) ---
 @Composable
 private fun ToolsMenuItem(
     iconRes: Int,
@@ -254,7 +242,6 @@ private fun ToolsMenuItem(
     }
 }
 
-// --- DÒNG ITEM BẬT TẮT ĐỒNG BỘ (TOGGLE SWITCH) ---
 @Composable
 fun SettingsToggleItem(
     title: String,
@@ -286,11 +273,7 @@ fun SettingsToggleItem(
         Spacer(modifier = Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1.0f)) {
             Text(text = title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            Text(
-                text = description,
-                color = Color.Gray,
-                fontSize = 11.sp
-            )
+            Text(text = description, color = Color.Gray, fontSize = 11.sp)
         }
         Switch(
             checked = checked,
@@ -305,7 +288,6 @@ fun SettingsToggleItem(
     }
 }
 
-// --- COMPONENT THANH ĐIỀU HƯỚNG DƯỚI (BOTTOM NAVIGATION) ---
 @Composable
 private fun SettingsBottomNavigation(
     currentTab: String,
@@ -345,17 +327,18 @@ private fun SettingsBottomNavigation(
                 onClick = { onTabSelected("Tệp") }
             )
 
-            // NÚT CHÍNH GIỮA TRÒN XANH NGỌC
+            // NÚT CHÍNH GIỮA TRÒN XANH NGỌC (NÚT CHỤP ẢNH NHANH CAMERA)
             Box(
                 modifier = Modifier
                     .size(54.dp)
                     .clip(CircleShape)
                     .background(Color(0xFF14B8A6))
+                    // ─── ĐÃ SỬA: Nhấn vào đây sẽ thực thi callback mở camera y chang bên trang chủ ───
                     .clickable { onCenterClick() },
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.icon_add_file),
+                    painter = painterResource(id = R.drawable.tabler_photo_plus),
                     contentDescription = "Center Action",
                     modifier = Modifier.size(24.dp)
                 )

@@ -1,7 +1,7 @@
 package com.t2h.ocr.ui.home
 
 import android.util.Log
-import androidx.compose.foundation.BorderStroke // 👈 Đã thêm import chuẩn để sửa lỗi BoxStroke
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,7 +35,14 @@ fun HomeScreen(
         bottomBar = {
             HomeBottomNavigation(
                 currentTab = currentTab,
-                onTabSelected = { currentTab = it },
+                onTabSelected = { tabName ->
+                    currentTab = tabName
+                    when (tabName) {
+                        "Tệp" -> onNavigateToSection("Tệp")
+                        "Công cụ" -> onNavigateToSection("Công cụ")
+                        "Hồ sơ" -> onNavigateToSection("Hồ sơ")
+                    }
+                },
                 onCenterClick = onCenterFabClick
             )
         },
@@ -106,7 +113,13 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(28.dp)
             ) {
                 categories.drop(4).forEach { category ->
-                    CategoryButton(category = category, onClick = { onNavigateToSection(category.title) })
+                    CategoryButton(
+                        category = category,
+                        onClick = {
+                            if (category.title == "Tất cả") onNavigateToSection("Tệp")
+                            else onNavigateToSection(category.title)
+                        }
+                    )
                 }
             }
 
@@ -142,7 +155,9 @@ fun HomeScreen(
                             text = "Xem tất cả",
                             color = Color.Gray,
                             fontSize = 12.sp,
-                            modifier = Modifier.clickable { onNavigateToSection("Xem tất cả") }
+                            modifier = Modifier.clickable {
+                                onNavigateToSection("Xem tất cả") // Chuyển sang danh sách lịch sử đầy đủ
+                            }
                         )
                     }
 
@@ -167,9 +182,8 @@ fun HomeScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // ĐÃ SỬA: Thay đổi BoxStroke thành BorderStroke và dọn sạch padding lỗi
                         Surface(
-                            onClick = { /* Xử lý thêm dữ liệu */ },
+                            onClick = { onCenterFabClick() },
                             color = Color.Transparent,
                             shape = RoundedCornerShape(8.dp),
                             border = BorderStroke(1.dp, Color(0xFF14B8A6))
@@ -226,7 +240,7 @@ private fun CategoryButton(
     }
 }
 
-// --- COMPONENT THANH ĐIỀU HƯỚNG DƯỚI (BOTTOM NAVIGATION) TRÀN CẠNH ---
+// --- COMPONENT THANH ĐIỀU HƯỚNG DƯỚI TRÀN CẠNH ---
 @Composable
 private fun HomeBottomNavigation(
     currentTab: String,
@@ -266,7 +280,7 @@ private fun HomeBottomNavigation(
                 onClick = { onTabSelected("Tệp") }
             )
 
-            // NÚT CHÍNH GIỮA NỔI BẬT
+            // NÚT CHÍNH GIỮA NỔI BẬT (CAMERA ACTION) - Giữ màu xanh ngọc thương hiệu
             Box(
                 modifier = Modifier
                     .size(54.dp)
@@ -276,7 +290,7 @@ private fun HomeBottomNavigation(
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.tabler_photo_plus), // Dùng icon add file làm nút trung tâm
+                    painter = painterResource(id = R.drawable.tabler_photo_plus),
                     contentDescription = "Center Action",
                     modifier = Modifier.size(24.dp)
                 )
@@ -316,12 +330,14 @@ private fun NavigationItem(
         Icon(
             painter = painterResource(id = iconRes),
             contentDescription = title,
+            // ─── ĐÃ KHÔI PHỤC: Trả lại màu vàng hổ phách (0xFFD4AF37) khi tab được chọn ───
             tint = if (isSelected) Color(0xFFD4AF37) else Color.Gray,
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = title,
+            // ─── ĐÃ KHÔI PHỤC: Trả lại màu chữ vàng khi active ───
             color = if (isSelected) Color(0xFFD4AF37) else Color.Gray,
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal

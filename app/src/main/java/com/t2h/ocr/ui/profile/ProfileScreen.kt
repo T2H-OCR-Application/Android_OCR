@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,19 +37,22 @@ import com.t2h.ocr.data.auth.AuthRepository
 @Composable
 fun ProfileScreen(
     authRepository: AuthRepository,
-    onNavigateBack: () -> Unit,
+    onNavigateBack: () -> Unit, // Giữ lại ở tham số đầu vào để tránh lỗi biên dịch hệ thống
     onNavigateToSettings: () -> Unit,
     onNavigateToHistory: () -> Unit = {},
     onNavigateToHome: () -> Unit = {},
-    onLogoutSuccess: () -> Unit = {}
+    onLogoutSuccess: () -> Unit = {}, // Callback định tuyến đá người dùng về trang Đăng nhập
+    onNavigateToScanner: () -> Unit = {} // Hỗ trợ nút chụp ảnh nhanh ở BottomBar
 ) {
     val context = LocalContext.current
     val currentUser by authRepository.currentUser.collectAsState(initial = FirebaseAuth.getInstance().currentUser)
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var currentTab by remember { mutableStateOf("Hồ sơ") }
 
-    // Trạng thái để ẩn/hiện hộp thoại xác nhận đăng xuất
+    // Khóa trạng thái Tab hiện tại luôn là "Hồ sơ" để nút luôn có màu vàng hổ phách
+    val currentTab = "Hồ sơ"
+
+    // Trạng thái điều khiển ẩn/hiện hộp thoại xác nhận đăng xuất
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     val accountLinkedMsg = stringResource(R.string.toast_account_linked)
@@ -95,11 +97,11 @@ fun ProfileScreen(
         }
     }
 
-    // ─── HỘP THOẠI XÁC NHẬN ĐĂNG XUẤT (DIALOG) ───
+    // ─── HỘP THOẠI XÁC NHẬN ĐĂNG XUẤT ───
     if (showLogoutDialog) {
         AlertDialog(
-            onDismissRequest = { showLogoutDialog = false }, // Bấm ra ngoài thì đóng dialog
-            containerColor = Color(0xFF252329), // Màu nền tối đồng bộ bento
+            onDismissRequest = { showLogoutDialog = false },
+            containerColor = Color(0xFF252329), // Nền Bento tối đồng bộ toàn app
             title = {
                 Text(
                     text = "Đăng xuất tài khoản",
@@ -117,27 +119,29 @@ fun ProfileScreen(
             },
             confirmButton = {
                 Button(
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)), // Nút đồng ý màu đỏ nguy hiểm
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)), // Màu đỏ cảnh báo nguy hiểm
                     shape = RoundedCornerShape(8.dp),
                     onClick = {
-                        showLogoutDialog = false // Đóng dialog trước
+                        showLogoutDialog = false // Đóng Dialog trước khi chuyển tiếp
 
-                        // Thực hiện Logic Đăng xuất
+                        // 1. Đăng xuất hoàn toàn khỏi Firebase Auth
                         FirebaseAuth.getInstance().signOut()
+
+                        // 2. Đăng xuất khỏi Google SDK để không tự động điền tài khoản cũ vào lần sau
                         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
                         GoogleSignIn.getClient(context, gso).signOut()
 
                         Toast.makeText(context, "Đã đăng xuất thành công", Toast.LENGTH_SHORT).show()
-                        onLogoutSuccess() // Callback đá về màn hình đăng nhập
+
+                        // 3. Kích hoạt callback điều hướng lọt về màn đăng nhập trong MainActivity
+                        onLogoutSuccess()
                     }
                 ) {
                     Text("Đăng xuất", color = Color.White, fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = { showLogoutDialog = false } // Bấm hủy thì chỉ đóng dialog
-                ) {
+                TextButton(onClick = { showLogoutDialog = false }) {
                     Text("Hủy", color = Color.Gray, fontWeight = FontWeight.Medium)
                 }
             }
@@ -155,15 +159,7 @@ fun ProfileScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                 },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = stringResource(R.string.common_back),
-                            tint = Color.White
-                        )
-                    }
-                },
+                // Đã xóa bỏ icon mũi tên quay lại tại đây để tránh xung đột trải nghiệm thanh TabBar chính dưới đáy
                 actions = {
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(
@@ -179,15 +175,15 @@ fun ProfileScreen(
         bottomBar = {
             ProfileBottomNavigation(
                 currentTab = currentTab,
-                onTabSelected = {
-                    currentTab = it
-                    when (it) {
+                onTabSelected = { tabName ->
+                    when (tabName) {
                         "Trang chủ" -> onNavigateToHome()
                         "Tệp" -> onNavigateToHistory()
                         "Công cụ" -> onNavigateToSettings()
+                        "Hồ sơ" -> { /* Đang ở chính màn này, không xử lý lại */ }
                     }
                 },
-                onCenterClick = { /* Xử lý quét nhanh */ }
+                onCenterClick = onNavigateToScanner
             )
         },
         containerColor = Color(0xFF1A1D24)
@@ -200,10 +196,9 @@ fun ProfileScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            // 1. KHỐI TIÊU ĐỀ: ẢNH LỚN Ở TRÊN, EMAIL/UID Ở DƯỚI ĐỔ DỌC
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Avatar Người dùng
             Box(
                 modifier = Modifier
                     .size(86.dp)
@@ -220,6 +215,7 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Hiển thị Email/Trạng thái ẩn danh
             Text(
                 text = currentUser?.email ?: if (currentUser?.isAnonymous == true) "Tài khoản ẩn danh" else "Đã liên kết hệ thống",
                 color = Color.White,
@@ -231,6 +227,7 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            // Hiển thị UID rút gọn
             Text(
                 text = stringResource(R.string.profile_uid, currentUser?.uid?.take(16) ?: ""),
                 color = Color.Gray,
@@ -245,7 +242,7 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // 2. KHỐI BENTO MENU CHỨC NĂNG
+            // ─── KHỐI BENTO MENU CHỨC NĂNG ───
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -278,7 +275,7 @@ fun ProfileScreen(
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color.White.copy(alpha = 0.06f))
 
-                    // KẾT NỐI VỚI GOOGLE
+                    // LIÊN KẾT TÀI KHOẢN GOOGLE
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -341,16 +338,14 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 3. NÚT ĐĂNG XUẤT (Khi nhấn chỉ kích hoạt hiện Dialog lên)
+            // ─── NÚT KÍCH HOẠT ĐĂNG XUẤT MÀU ĐỎ MỜ TÌNH TẾ ───
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xFFEF4444).copy(alpha = 0.1f))
-                    .clickable {
-                        showLogoutDialog = true // 👈 Bật hộp thoại xác nhận lên đây bạn nhé!
-                    }
+                    .clickable { showLogoutDialog = true } // Nhấp để hiển thị AlertDialog
                     .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -377,7 +372,6 @@ fun ProfileScreen(
     }
 }
 
-// --- COMPONENT CON CHO TỪNG DÒNG MENU ---
 @Composable
 private fun ProfileMenuItem(
     iconRes: Int,
@@ -424,7 +418,6 @@ private fun ProfileMenuItem(
     }
 }
 
-// --- COMPONENT THANH ĐIỀU HƯỚNG DƯỚI (BOTTOM NAVIGATION) ---
 @Composable
 private fun ProfileBottomNavigation(
     currentTab: String,
@@ -464,6 +457,7 @@ private fun ProfileBottomNavigation(
                 onClick = { onTabSelected("Tệp") }
             )
 
+            // NÚT CHÍNH GIỮA (QUÉT NHANH CAMERA)
             Box(
                 modifier = Modifier
                     .size(54.dp)
@@ -513,7 +507,7 @@ private fun NavigationItem(
         Icon(
             painter = painterResource(id = iconRes),
             contentDescription = title,
-            tint = if (isSelected) Color(0xFFD4AF37) else Color.Gray,
+            tint = if (isSelected) Color(0xFFD4AF37) else Color.Gray, // Chuẩn màu vàng hổ phách thương hiệu
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
