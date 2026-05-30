@@ -128,7 +128,8 @@ class MainActivity : ComponentActivity() {
                                 title = scan.title.ifBlank { "Tệp không tên" },
                                 timeString = formatRelativeTime(scan.timestamp),
                                 imagePath = scan.imagePath.ifBlank { null },
-                                timestamp = scan.timestamp
+                                timestamp = scan.timestamp,
+                                ocrText = scan.ocrText
                             )
                         }
                     }
@@ -256,10 +257,20 @@ class MainActivity : ComponentActivity() {
                                     onCenterFabClick = openScannerWithPermissionCheck,
                                     onRecentItemClick = { item ->
                                         currentScreen = Screen.Results(
-                                            pages = listOf(item.title),
+                                            pages = listOf(item.ocrText),
                                             imagePath = item.imagePath ?: "",
                                             allImagePaths = item.imagePath?.let { listOf(it) } ?: emptyList()
                                         )
+                                    },
+                                    onRecentItemDelete = { item ->
+                                        scope.launch(Dispatchers.IO) {
+                                            try {
+                                                if (!item.imagePath.isNullOrBlank()) File(item.imagePath).delete()
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                            }
+                                            scanRepository.deleteScan(item.id)
+                                        }
                                     }
                                 )
                             }
@@ -269,13 +280,23 @@ class MainActivity : ComponentActivity() {
                                     historyList = recentHistory,
                                     onItemClick = { item ->
                                         currentScreen = Screen.Results(
-                                            pages = listOf(item.title),
+                                            pages = listOf(item.ocrText),
                                             imagePath = item.imagePath ?: "",
                                             allImagePaths = emptyList()
                                         )
                                     },
                                     onEditItemClick = { item ->
                                         Log.d("Navigation", "Sửa đổi item: ${item.id}")
+                                    },
+                                    onDeleteItemClick = { item ->
+                                        scope.launch(Dispatchers.IO) {
+                                            try {
+                                                if (!item.imagePath.isNullOrBlank()) File(item.imagePath).delete()
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                            }
+                                            scanRepository.deleteScan(item.id)
+                                        }
                                     },
                                     onNavigateToSection = { sectionName ->
                                         when (sectionName) {
@@ -303,7 +324,7 @@ class MainActivity : ComponentActivity() {
                                     onCenterFabClick = openScannerWithPermissionCheck,
                                     onOpenScan = { scan ->
                                         currentScreen = Screen.Results(
-                                            pages = listOf(scan.title),
+                                            pages = listOf(scan.ocrText),
                                             imagePath = scan.imagePath,
                                             allImagePaths = if (scan.imagePath.isNotBlank()) listOf(scan.imagePath) else emptyList()
                                         )

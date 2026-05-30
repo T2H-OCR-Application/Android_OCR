@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,7 +35,8 @@ fun HomeScreen(
     onNavigateToSection: (String) -> Unit = {},
     onCenterFabClick: () -> Unit = {},
     recentHistory: List<HistoryItemData> = emptyList(),
-    onRecentItemClick: (HistoryItemData) -> Unit = {}
+    onRecentItemClick: (HistoryItemData) -> Unit = {},
+    onRecentItemDelete: (HistoryItemData) -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var currentTab by remember { mutableStateOf("Trang chủ") }
@@ -225,7 +227,8 @@ fun HomeScreen(
                             items(filteredRecent.take(4), key = { it.id }) { item ->
                                 RecentHistoryItem(
                                     item = item,
-                                    onClick = { onRecentItemClick(item) }
+                                    onClick = { onRecentItemClick(item) },
+                                    onDeleteClick = { onRecentItemDelete(item) }
                                 )
                             }
                         }
@@ -277,7 +280,8 @@ private fun CategoryButton(
 @Composable
 private fun RecentHistoryItem(
     item: HistoryItemData,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -333,6 +337,15 @@ private fun RecentHistoryItem(
                 text = item.timeString,
                 color = Color.Gray,
                 fontSize = 12.sp
+            )
+        }
+
+        IconButton(onClick = onDeleteClick) {
+            Icon(
+                imageVector = Icons.Default.DeleteOutline,
+                contentDescription = "Delete recent item",
+                tint = Color.Gray.copy(alpha = 0.6f),
+                modifier = Modifier.size(18.dp)
             )
         }
     }
