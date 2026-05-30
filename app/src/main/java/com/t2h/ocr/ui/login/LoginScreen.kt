@@ -1,6 +1,11 @@
 package com.t2h.ocr.ui.login
 
+import android.app.Activity
+import android.util.Log
 import android.util.Patterns
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,6 +35,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -45,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale // Đã thêm import để scale ảnh nền
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -53,19 +60,68 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.Scope
+import com.google.api.services.drive.DriveScopes
 import com.t2h.ocr.R
+import com.t2h.ocr.data.auth.AuthRepository
 
 @Composable
 fun LoginScreen(
+    authRepository: AuthRepository,
     onNavigateToRegister: () -> Unit,
     onAuthSuccess: () -> Unit,
 ) {
+    val context = LocalContext.current
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var emailError by remember { mutableStateOf("") }
     var passwordError by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val googleFailedTokenMsg = "Google Sign-In failed: No ID Token"
+    val googleFailedStatusMsg = "Google Sign-In failed: status=%d, message=%s"
+    val googleFailedResultMsg = "Google Sign-In failed: result=%d"
+    val signInCancelledMsg = "Sign-In cancelled"
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                val idToken = account?.idToken
+                if (idToken != null) {
+                    isLoading = true
+                    errorMessage = null
+                    authRepository.signInWithGoogle(idToken) { success ->
+                        isLoading = false
+                        if (success) {
+                            onAuthSuccess()
+                        } else {
+                            errorMessage = "Firebase authentication with Google failed"
+                        }
+                    }
+                } else {
+                    errorMessage = googleFailedTokenMsg
+                }
+            } catch (e: ApiException) {
+                Log.e("LoginScreen", "Google sign in failed", e)
+                errorMessage = String.format(googleFailedStatusMsg, e.statusCode, e.message ?: "")
+            }
+        } else {
+            if (result.resultCode != Activity.RESULT_CANCELED) {
+                errorMessage = String.format(googleFailedResultMsg, result.resultCode)
+            } else {
+                Toast.makeText(context, signInCancelledMsg, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     AuthBackground {
         Column(
@@ -79,6 +135,11 @@ fun LoginScreen(
 
             // Khoảng cách đẩy các ô nhập liệu xuống vùng nền tối để không đè lên ảnh màu xanh
             Spacer(modifier = Modifier.height(120.dp))
+
+            errorMessage?.let {
+                Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, textAlign = TextAlign.Center)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
             AuthTextField(
                 value = email,
@@ -160,7 +221,15 @@ fun LoginScreen(
             // Nút đăng nhập Google tròn lấy ảnh từ thư mục drawable
             SocialButton(
                 iconResId = R.drawable.google_icon,
-                onClick = { /* TODO: xử lý đăng nhập Google */ }
+                onClick = {
+                    val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                        .requestIdToken(context.getString(R.string.default_web_client_id))
+                        .requestEmail()
+                        .requestScopes(Scope(DriveScopes.DRIVE_FILE))
+                        .build()
+                    val googleSignInClient = GoogleSignIn.getClient(context, gso)
+                    launcher.launch(googleSignInClient.signInIntent)
+                }
             )
 
             Spacer(modifier = Modifier.height(30.dp))

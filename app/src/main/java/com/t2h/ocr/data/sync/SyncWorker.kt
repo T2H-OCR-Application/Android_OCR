@@ -74,12 +74,37 @@ class SyncWorker(
             // Artificial delay to ensure user sees the "Syncing" state
             delay(1000)
 
-            val downloadUrl = driveUploader.uploadPdf(pdfFile)
-            if (downloadUrl == null) {
-                Log.e(TAG, "SyncWorker: [RETRY] Drive upload failed")
-                analyticsHelper.logSyncStatus(scanId, attemptCount, System.currentTimeMillis() - startTime, "drive_upload_failed")
-                return Result.retry()
+            val result = driveUploader.uploadPdf(pdfFile)
+            val downloadUrl = when (result) {
+                is UploadResult.Success -> result.downloadUrl
+                is UploadResult.NeedsConsent -> {
+                    Log.e(TAG, "SyncWorker: [FAIL] Consent needed")
+                    val pendingIntent = android.app.PendingIntent.getActivity(
+                        applicationContext,
+                        0,
+                        result.intent,
+                        android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+                    )
+                    
+                    val consentNotification = NotificationCompat.Builder(applicationContext, "sync_channel")
+                        .setContentTitle(applicationContext.getString(R.string.sync_notification_consent_title))
+                        .setContentText(applicationContext.getString(R.string.sync_notification_consent_text))
+                        .setSmallIcon(R.drawable.google_icon)
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .setContentIntent(pendingIntent)
+                        .setAutoCancel(true)
+                        .build()
+                    
+                    notificationManager.notify(notificationId + 10, consentNotification)
+                    return Result.failure()
+                }
+                is UploadResult.Error -> {
+                    Log.e(TAG, "SyncWorker: [RETRY] Drive upload failed: ${result.message}")
+                    analyticsHelper.logSyncStatus(scanId, attemptCount, System.currentTimeMillis() - startTime, "drive_upload_failed")
+                    return Result.retry()
+                }
             }
+
             Log.e(TAG, "SyncWorker: [STEP] Drive upload SUCCESS")
 
             // 5. IMPORTANT: Update local repo first with the Drive URL

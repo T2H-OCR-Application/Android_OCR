@@ -93,4 +93,6 @@
     <string name="sync_notification_saving">Saving Successful</string>
     <string name="sync_notification_complete_title">Sync Complete</string>
     <string name="sync_notification_complete_text">Document successfully saved to cloud</string>
+    <string name="sync_notification_consent_title">Google Drive Consent Required</string>
+    <string name="sync_notification_consent_text">Tap to grant permission to upload your scans to Google Drive.</string>
 </resources>

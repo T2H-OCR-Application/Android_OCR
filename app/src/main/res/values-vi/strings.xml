@@ -92,4 +92,6 @@
     <string name="sync_notification_saving">Lưu thành công</string>
     <string name="sync_notification_complete_title">Đồng bộ hoàn tất</string>
     <string name="sync_notification_complete_text">Tài liệu đã được lưu thành công lên đám mây</string>
+    <string name="sync_notification_consent_title">Yêu cầu quyền truy cập Google Drive</string>
+    <string name="sync_notification_consent_text">Nhấn để cấp quyền tải bản quét của bạn lên Google Drive.</string>
 </resources>
