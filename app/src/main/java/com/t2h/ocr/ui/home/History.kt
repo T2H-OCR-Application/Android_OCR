@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,7 +38,8 @@ data class HistoryItemData(
     val title: String,
     val timeString: String, // Ví dụ: "Hôm qua", "2 giờ trước"
     val imagePath: String? = null,
-    val timestamp: Long = 0L
+    val timestamp: Long = 0L,
+    val ocrText: String = ""
 )
 
 @Composable
@@ -45,6 +47,7 @@ fun HistoryScreen(
     historyList: List<HistoryItemData> = emptyList(),
     onItemClick: (HistoryItemData) -> Unit = {},
     onEditItemClick: (HistoryItemData) -> Unit = {},
+    onDeleteItemClick: (HistoryItemData) -> Unit = {},
     onNavigateToSection: (String) -> Unit = {}, // Callback điều hướng lọt về MainActivity
     onCenterFabClick: () -> Unit = {}
 ) {
@@ -199,7 +202,8 @@ fun HistoryScreen(
                                 HistoryRowItem(
                                     item = item,
                                     onClick = { onItemClick(item) },
-                                    onEditClick = { onEditItemClick(item) }
+                                    onEditClick = { onEditItemClick(item) },
+                                    onDeleteClick = { onDeleteItemClick(item) }
                                 )
                             }
                         }
@@ -214,7 +218,8 @@ fun HistoryScreen(
 private fun HistoryRowItem(
     item: HistoryItemData,
     onClick: () -> Unit,
-    onEditClick: () -> Unit
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -297,6 +302,15 @@ private fun HistoryRowItem(
                     fontSize = 12.sp
                 )
             }
+        }
+
+        IconButton(onClick = onDeleteClick) {
+            Icon(
+                imageVector = Icons.Default.DeleteOutline,
+                contentDescription = "Delete",
+                tint = Color.Gray.copy(alpha = 0.6f),
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }
