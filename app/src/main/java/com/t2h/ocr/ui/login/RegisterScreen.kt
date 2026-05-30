@@ -310,9 +310,9 @@ private fun AuthTextField(
             visualTransformation = if (isPassword && !passwordVisible) PasswordVisualTransformation() else VisualTransformation.None,
             singleLine = true,
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.White, // Nền trắng chuẩn thiết kế
+                focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White,
-                focusedIndicatorColor = Color.Transparent, // Ẩn gạch dưới thô
+                focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 focusedTextColor = Color.Black,
                 unfocusedTextColor = Color.Black

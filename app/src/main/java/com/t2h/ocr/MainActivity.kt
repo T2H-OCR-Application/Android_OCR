@@ -12,12 +12,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -161,17 +163,58 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    // ─── HÀM XÁC ĐỊNH INDEX CỦA MÀNG DỰA TRÊN VỊ TRÍ ───
+                    fun getScreenIndex(screen: Screen): Int = when (screen) {
+                        Screen.Home, Screen.History -> 0           // Trang chủ
+                        Screen.Files -> 1                           // Tệp
+                        Screen.Settings -> 2                        // Công cụ
+                        Screen.Profile -> 3                         // Hồ sơ
+                        else -> -1  // Các màng khác (Scanner, Crop, Gallery, Results) không tính
+                    }
+
                     AnimatedContent(
                         targetState = currentScreen,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFF1A1D24)),
                         transitionSpec = {
-                            if (targetState is Screen.Results || targetState is Screen.Crop || targetState is Screen.Gallery) {
-                                slideInHorizontally { it } + fadeIn() with
-                                        slideOutHorizontally { -it } + fadeOut()
-                            } else {
-                                slideInHorizontally { -it } + fadeIn() with
-                                        slideOutHorizontally { it } + fadeOut()
+                            val currentIndex = getScreenIndex(initialState)
+                            val targetIndex = getScreenIndex(targetState)
+                            
+                            // ─── LOGIC: So sánh vị trí để quyết định hướng ───
+                            val direction = when {
+                                // Nếu target có index = -1 (Scanner, Crop, etc), luôn forward
+                                targetIndex == -1 -> "forward"
+                                // Nếu current có index = -1, quay lại backward
+                                currentIndex == -1 -> "backward"
+                                // Nếu target ở bên phải (index lớn hơn): slide từ phải sang trái
+                                targetIndex > currentIndex -> "forward"
+                                // Nếu target ở bên trái (index nhỏ hơn): slide từ trái sang phải
+                                else -> "backward"
+                            }
+                            
+                            val animDuration = 350
+                            when (direction) {
+                                "forward" -> {
+                                    slideInHorizontally(
+                                        initialOffsetX = { it },
+                                        animationSpec = tween(animDuration)
+                                    ) with slideOutHorizontally(
+                                        targetOffsetX = { -it },
+                                        animationSpec = tween(animDuration)
+                                    )
+                                }
+                                else -> {
+                                    slideInHorizontally(
+                                        initialOffsetX = { -it },
+                                        animationSpec = tween(animDuration)
+                                    ) with slideOutHorizontally(
+                                        targetOffsetX = { it },
+                                        animationSpec = tween(animDuration)
+                                    )
+                                }
                             }.using(
-                                SizeTransform(clip = false)
+                                SizeTransform(clip = true)
                             )
                         }
                     ) { screen ->
