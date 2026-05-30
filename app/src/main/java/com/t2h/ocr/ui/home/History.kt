@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,6 +23,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,7 +36,8 @@ data class HistoryItemData(
     val id: String,
     val title: String,
     val timeString: String, // Ví dụ: "Hôm qua", "2 giờ trước"
-    val imagePath: String? = null
+    val imagePath: String? = null,
+    val timestamp: Long = 0L
 )
 
 @Composable
@@ -47,9 +50,8 @@ fun HistoryScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
-    // Đóng đinh Tab hiện tại là "Tệp" (hoặc "Trang chủ" tùy cấu trúc phân nhánh app của bạn)
-    // để sáng chuẩn màu vàng hổ phách 0xFFD4AF37
-    val currentTab = "Tệp"
+    // ─── ĐÃ SỬA: Đổi từ "Tệp" sang "Trang chủ" để icon Trang chủ sáng màu vàng chuẩn ───
+    val currentTab = "Trang chủ"
 
     // Tự động lọc danh sách dựa trên những gì người dùng gõ vào ô Tìm kiếm
     val filteredHistory = remember(searchQuery, historyList) {
@@ -68,10 +70,10 @@ fun HistoryScreen(
             HistoryBottomNavigation(
                 currentTab = currentTab,
                 onTabSelected = { tabName ->
-                    // ─── ĐÃ SỬA: Kích hoạt callback định tuyến đẩy ngược sự kiện về MainActivity ───
+                    // ─── ĐÃ SỬA: Đồng bộ lại các nhánh click chuyển hướng ───
                     when (tabName) {
-                        "Trang chủ" -> onNavigateToSection("Trang chủ")
-                        "Tệp" -> { /* Đang ở chính màn hình lịch sử/tệp, không xử lý lại */ }
+                        "Trang chủ" -> { /* Đang thuộc nhánh xem tiếp từ Trang chủ, không chạy lại */ }
+                        "Tệp" -> onNavigateToSection("Tệp")
                         "Công cụ" -> onNavigateToSection("Công cụ")
                         "Hồ sơ" -> onNavigateToSection("Hồ sơ")
                     }
@@ -147,11 +149,21 @@ fun HistoryScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clickable { onNavigateToSection("Trang chủ") }
+                        )
                         Text(
                             text = if (searchQuery.isBlank()) "Gần Đây" else "Kết quả tìm kiếm (${filteredHistory.size})",
                             color = Color.White,
                             fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.Center
                         )
                         if (searchQuery.isBlank()) {
                             Text(
@@ -160,6 +172,8 @@ fun HistoryScreen(
                                 fontSize = 12.sp,
                                 modifier = Modifier.clickable { onNavigateToSection("Xem tất cả") }
                             )
+                        } else {
+                            Box(modifier = Modifier.width(60.dp))
                         }
                     }
 
@@ -170,7 +184,7 @@ fun HistoryScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = if (searchQuery.isBlank()) "Không có dữ liệu gần đây" else "Không tìm thấy kết quả phù hàng",
+                                text = if (searchQuery.isBlank()) "Không có dữ liệu gần đây" else "Không tìm thấy kết quả phù hợp",
                                 color = Color.Gray,
                                 fontSize = 14.sp
                             )
@@ -270,7 +284,6 @@ private fun HistoryRowItem(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Đã đổi sang icon đồng hồ/lịch phù hợp hơn cho thông số thời gian nếu có trong drawable của bạn
                 Icon(
                     painter = painterResource(id = R.drawable.material_symbols_border_all_rounded),
                     contentDescription = "Time icon",
@@ -327,7 +340,7 @@ private fun HistoryBottomNavigation(
                 onClick = { onTabSelected("Tệp") }
             )
 
-            // NÚT CHÍNH GIỮA TRÒN XANH NGỌC MỞ CAMERA CAMERA QUÉT NHANH
+            // NÚT CHÍNH GIỮA TRÒN XANH NGỌC MỞ CAMERA QUÉT NHANH
             Box(
                 modifier = Modifier
                     .size(54.dp)
