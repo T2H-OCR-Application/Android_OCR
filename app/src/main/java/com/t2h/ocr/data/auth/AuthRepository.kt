@@ -61,6 +61,20 @@ class AuthRepository(
             }
     }
 
+    fun signInWithGoogle(idToken: String, onComplete: (Boolean) -> Unit = {}) {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d(TAG, "signInWithGoogle:success")
+                    onComplete(true)
+                } else {
+                    Log.w(TAG, "signInWithGoogle:failure", task.exception)
+                    onComplete(false)
+                }
+            }
+    }
+
     fun getUid(): String? = auth.currentUser?.uid
 
     companion object {

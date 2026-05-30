@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.sp
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.Scope
+import com.google.api.services.drive.DriveScopes
 import com.google.firebase.auth.FirebaseAuth
 import com.t2h.ocr.R
 import com.t2h.ocr.data.auth.AuthRepository
@@ -286,6 +288,7 @@ fun ProfileScreen(
                                 val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                                     .requestIdToken(context.getString(R.string.default_web_client_id))
                                     .requestEmail()
+                                    .requestScopes(Scope(DriveScopes.DRIVE_FILE))
                                     .build()
                                 val googleSignInClient = GoogleSignIn.getClient(context, gso)
                                 launcher.launch(googleSignInClient.signInIntent)

@@ -408,6 +408,7 @@ class MainActivity : ComponentActivity() {
 
                             Screen.Login -> {
                                 LoginScreen(
+                                    authRepository = authRepository,
                                     onNavigateToRegister = { currentScreen = Screen.Register },
                                     onAuthSuccess = { currentScreen = Screen.Home }
                                 )

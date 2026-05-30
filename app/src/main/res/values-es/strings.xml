@@ -90,6 +90,8 @@
     <string name="sync_notification_connecting">Conectando a los servicios…</string>
     <string name="sync_notification_uploading">Subiendo a Google Drive…</string>
     <string name="sync_notification_saving">Guardado exitoso</string>
-    <string name="sync_notification_complete_title">Sincronización completa</string>
-    <string name="sync_notification_complete_text">Documento guardado con éxito en la nube</string>
-</resources>
+    <string name="sync_notification_complete_title">Sincronización completada</string>
+    <string name="sync_notification_complete_text">Documento guardado exitosamente en la nube</string>
+    <string name="sync_notification_consent_title">Se requiere consentimiento de Google Drive</string>
+    <string name="sync_notification_consent_text">Toque para otorgar permiso para subir sus escaneos a Google Drive.</string>
+    </resources>
