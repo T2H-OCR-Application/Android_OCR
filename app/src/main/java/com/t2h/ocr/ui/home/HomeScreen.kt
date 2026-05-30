@@ -6,6 +6,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,20 +18,36 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.t2h.ocr.R
+import java.io.File
 
 @Composable
 fun HomeScreen(
     onNavigateToSection: (String) -> Unit = {},
-    onCenterFabClick: () -> Unit = {}
+    onCenterFabClick: () -> Unit = {},
+    recentHistory: List<HistoryItemData> = emptyList(),
+    onRecentItemClick: (HistoryItemData) -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var currentTab by remember { mutableStateOf("Trang chủ") }
+    val filteredRecent = remember(searchQuery, recentHistory) {
+        if (searchQuery.isBlank()) {
+            recentHistory
+        } else {
+            recentHistory.filter { item ->
+                item.title.contains(searchQuery, ignoreCase = true) ||
+                        item.timeString.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -161,39 +179,55 @@ fun HomeScreen(
                         )
                     }
 
-                    // Trạng thái trống (Không có dữ liệu)
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.bi_file_text),
-                            contentDescription = "No Data",
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Không có dữ liệu",
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Surface(
-                            onClick = { onCenterFabClick() },
-                            color = Color.Transparent,
-                            shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, Color(0xFF14B8A6))
+                    if (filteredRecent.isEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Text(
-                                text = "Thêm dữ liệu",
-                                color = Color(0xFF14B8A6),
-                                fontSize = 14.sp,
-                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                            Image(
+                                painter = painterResource(id = R.drawable.bi_file_text),
+                                contentDescription = "No Data",
+                                modifier = Modifier.size(64.dp)
                             )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = if (searchQuery.isBlank()) "Không có dữ liệu" else "Không tìm thấy kết quả phù hợp",
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Surface(
+                                onClick = { onCenterFabClick() },
+                                color = Color.Transparent,
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, Color(0xFF14B8A6))
+                            ) {
+                                Text(
+                                    text = "Thêm dữ liệu",
+                                    color = Color(0xFF14B8A6),
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentPadding = PaddingValues(vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(filteredRecent.take(4), key = { it.id }) { item ->
+                                RecentHistoryItem(
+                                    item = item,
+                                    onClick = { onRecentItemClick(item) }
+                                )
+                            }
                         }
                     }
                 }
@@ -237,6 +271,70 @@ private fun CategoryButton(
             textAlign = TextAlign.Center,
             maxLines = 1
         )
+    }
+}
+
+@Composable
+private fun RecentHistoryItem(
+    item: HistoryItemData,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF1E293B))
+            .clickable { onClick() }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color.White.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (!item.imagePath.isNullOrBlank()) {
+                Image(
+                    painter = rememberAsyncImagePainter(File(item.imagePath)),
+                    contentDescription = item.title,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(10.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.bi_file_text),
+                    contentDescription = item.title,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = item.title,
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = item.timeString,
+                color = Color.Gray,
+                fontSize = 12.sp
+            )
+        }
     }
 }
 

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TextSnippet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +26,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.t2h.ocr.R
+import com.t2h.ocr.data.ScanRepository
+import com.t2h.ocr.data.models.ScanMetadata
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 data class DocumentFile(
     val id: String,
@@ -35,24 +42,55 @@ data class DocumentFile(
     val isPdf: Boolean
 )
 
+private fun ScanMetadata.toDocumentFile(): DocumentFile {
+    val path = if (pdfPath.isNotBlank()) pdfPath else imagePath
+    val file = if (path.isNotBlank()) File(path) else null
+    val displayName = title.ifBlank { file?.name ?: "Tệp không tên" }
+    val dateText = if (timestamp > 0) formatTimestamp(timestamp) else ""
+    val sizeText = if (pdfPath.isNotBlank()) "" else file?.let { formatFileSize(it.length()) } ?: ""
+    return DocumentFile(
+        id = id,
+        name = displayName,
+        date = dateText,
+        size = sizeText,
+        pageCount = if (pdfPath.isNotBlank()) 1 else 1,
+        isPdf = pdfPath.isNotBlank()
+    )
+}
+
+private fun formatTimestamp(timestamp: Long): String {
+    val date = Date(timestamp)
+    val format = SimpleDateFormat("dd MMM, yyyy HH:mm", Locale.getDefault())
+    return format.format(date)
+}
+
+private fun formatFileSize(bytes: Long): String {
+    if (bytes <= 0) return "0 B"
+    val units = arrayOf("B", "KB", "MB", "GB")
+    val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
+    return String.format(Locale.getDefault(), "%.1f %s", bytes / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups])
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilesScreen(
+    scanRepository: ScanRepository,
     onNavigateToSection: (String) -> Unit = {},
-    onCenterFabClick: () -> Unit = {}
+    onCenterFabClick: () -> Unit = {},
+    onOpenScan: (ScanMetadata) -> Unit = {},
+    onDeleteScan: (ScanMetadata) -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
     // Thiết lập trạng thái tab hiện tại mặc định là "Tệp" khi vào màn hình này
     var currentTab by remember { mutableStateOf("Tệp") }
 
-    val mockFiles = remember {
-        listOf(
-            DocumentFile("1", "Tai_Lieu_HCI_Bai_1.pdf", "Hôm nay, 14:20", "2.4 MB", 4, true),
-            DocumentFile("2", "Giao_Trinh_IT_HaUI.txt", "Hôm qua, 09:15", "45 KB", 1, false),
-            DocumentFile("3", "Hoa_Don_Thanh_Toan.pdf", "25 Th05, 2026", "1.1 MB", 2, true),
-            DocumentFile("4", "Scan_Document_HIT.pdf", "20 Th05, 2026", "5.8 MB", 12, true),
-            DocumentFile("5", "Ghi_Chu_Thuat_Toan.txt", "18 Th05, 2026", "120 KB", 1, false)
-        )
+    val scans by scanRepository.scans.collectAsState(initial = emptyList())
+    val filteredScans = remember(scans, searchQuery) {
+        scans.filter { scan ->
+            searchQuery.isBlank() ||
+                    scan.title.contains(searchQuery, ignoreCase = true) ||
+                    scan.ocrText.contains(searchQuery, ignoreCase = true)
+        }
     }
 
     Scaffold(
@@ -94,45 +132,58 @@ fun FilesScreen(
                 .background(Color(0xFF1A1D24))
         ) {
             // ─── 1. THANH TÌM KIẾM TẬP TIN ───
-            Box(
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .height(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF252329))
-                    .padding(horizontal = 14.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                    .height(56.dp),
+                leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search Icon",
                         tint = Color.Gray,
                         modifier = Modifier.size(20.dp)
                     )
-                    Spacer(modifier = Modifier.width(10.dp))
+                },
+                placeholder = {
                     Text(
                         text = "Tìm kiếm tên tệp, văn bản...",
                         color = Color.Gray.copy(alpha = 0.6f),
-                        fontSize = 14.sp,
-                        modifier = Modifier.weight(1f)
+                        fontSize = 14.sp
                     )
-                }
-            }
+                },
+                singleLine = true,
+                colors = TextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedContainerColor = Color(0xFF252329),
+                    unfocusedContainerColor = Color(0xFF252329),
+                    cursorColor = Color.White,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedLeadingIconColor = Color.Gray,
+                    unfocusedLeadingIconColor = Color.Gray,
+                    focusedPlaceholderColor = Color.Gray.copy(alpha = 0.6f),
+                    unfocusedPlaceholderColor = Color.Gray.copy(alpha = 0.6f)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
 
             // ─── 2. DANH SÁCH FILE BENTO LIST ───
-            if (mockFiles.isEmpty()) {
+            if (filteredScans.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = "Thư mục lịch sử trống", color = Color.Gray, fontSize = 14.sp)
+                    Text(
+                        text = if (searchQuery.isBlank()) "Thư mục lịch sử trống" else "Không tìm thấy tệp",
+                        color = Color.Gray,
+                        fontSize = 14.sp
+                    )
                 }
             } else {
                 LazyColumn(
@@ -140,11 +191,11 @@ fun FilesScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(mockFiles, key = { it.id }) { file ->
+                    items(filteredScans, key = { it.id }) { scan ->
                         FileItemRow(
-                            file = file,
-                            onClick = { /* Xử lý mở xem nội dung file */ },
-                            onDelete = { /* Xử lý xóa file */ }
+                            file = scan.toDocumentFile(),
+                            onClick = { onOpenScan(scan) },
+                            onDelete = { onDeleteScan(scan) }
                         )
                     }
                 }

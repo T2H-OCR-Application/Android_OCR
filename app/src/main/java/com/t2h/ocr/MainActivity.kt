@@ -67,6 +67,9 @@ import org.opencv.core.Mat
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.core.Point
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 sealed class Screen {
@@ -113,11 +116,22 @@ class MainActivity : ComponentActivity() {
                     val scope = rememberCoroutineScope()
                     val currentUser by authRepository.currentUser.collectAsState(initial = FirebaseAuth.getInstance().currentUser)
 
-                    // Màn hình khởi chạy ban đầu lọt thẳng vào Home (hoặc chỉnh thành Screen.Login tùy logic)
                     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
                     var isProcessing by remember { mutableStateOf(false) }
 
                     val scanRepository = remember { ScanRepository.getInstance(context) }
+                    val scans by scanRepository.scans.collectAsState(initial = emptyList())
+                    val recentHistory = remember(scans) {
+                        scans.sortedByDescending { it.timestamp }.map { scan ->
+                            HistoryItemData(
+                                id = scan.id,
+                                title = scan.title.ifBlank { "Tệp không tên" },
+                                timeString = formatRelativeTime(scan.timestamp),
+                                imagePath = scan.imagePath.ifBlank { null },
+                                timestamp = scan.timestamp
+                            )
+                        }
+                    }
                     val workManager = remember { WorkManager.getInstance(context) }
 
                     val scannerViewModel: ScannerViewModel = viewModel()
@@ -154,7 +168,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Hàm dùng chung kiểm tra quyền và mở Camera quét nhanh toàn hệ thống
                     val openScannerWithPermissionCheck = {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                             currentScreen = Screen.Scanner
@@ -163,13 +176,14 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // ─── HÀM XÁC ĐỊNH INDEX CỦA MÀNG DỰA TRÊN VỊ TRÍ ───
+                    // ─── ĐÃ SỬA: PHÂN TÁCH RÕ RÀNG INDEX ĐỂ TẠO HIỆU ỨNG ĐẨY TỪ PHẢI SANG TRÁI ───
                     fun getScreenIndex(screen: Screen): Int = when (screen) {
-                        Screen.Home, Screen.History -> 0           // Trang chủ
-                        Screen.Files -> 1                           // Tệp
-                        Screen.Settings -> 2                        // Công cụ
-                        Screen.Profile -> 3                         // Hồ sơ
-                        else -> -1  // Các màng khác (Scanner, Crop, Gallery, Results) không tính
+                        Screen.Home -> 0       // Gốc Trang chủ bên trái nhất
+                        Screen.History -> 1    // Nhấp "Xem tất cả" sẽ có index lớn hơn -> Đẩy từ phải sang trái chuẩn bài
+                        Screen.Files -> 2
+                        Screen.Settings -> 3
+                        Screen.Profile -> 4
+                        else -> -1
                     }
 
                     AnimatedContent(
@@ -180,19 +194,14 @@ class MainActivity : ComponentActivity() {
                         transitionSpec = {
                             val currentIndex = getScreenIndex(initialState)
                             val targetIndex = getScreenIndex(targetState)
-                            
-                            // ─── LOGIC: So sánh vị trí để quyết định hướng ───
+
                             val direction = when {
-                                // Nếu target có index = -1 (Scanner, Crop, etc), luôn forward
                                 targetIndex == -1 -> "forward"
-                                // Nếu current có index = -1, quay lại backward
                                 currentIndex == -1 -> "backward"
-                                // Nếu target ở bên phải (index lớn hơn): slide từ phải sang trái
-                                targetIndex > currentIndex -> "forward"
-                                // Nếu target ở bên trái (index nhỏ hơn): slide từ trái sang phải
+                                targetIndex > currentIndex -> "forward" // Index lớn hơn -> dịch chuyển từ phải sang trái
                                 else -> "backward"
                             }
-                            
+
                             val animDuration = 350
                             when (direction) {
                                 "forward" -> {
@@ -234,6 +243,7 @@ class MainActivity : ComponentActivity() {
 
                             Screen.Home -> {
                                 HomeScreen(
+                                    recentHistory = recentHistory,
                                     onNavigateToSection = { sectionName ->
                                         when (sectionName) {
                                             "Quét" -> openScannerWithPermissionCheck()
@@ -243,22 +253,20 @@ class MainActivity : ComponentActivity() {
                                             "Cài đặt", "Công cụ" -> currentScreen = Screen.Settings
                                         }
                                     },
-                                    onCenterFabClick = openScannerWithPermissionCheck
+                                    onCenterFabClick = openScannerWithPermissionCheck,
+                                    onRecentItemClick = { item ->
+                                        currentScreen = Screen.Results(
+                                            pages = listOf(item.title),
+                                            imagePath = item.imagePath ?: "",
+                                            allImagePaths = item.imagePath?.let { listOf(it) } ?: emptyList()
+                                        )
+                                    }
                                 )
                             }
 
                             Screen.History -> {
-                                val mockHistoryList = remember {
-                                    listOf(
-                                        HistoryItemData("1", "Ảnh thiên nhiên lúa bậc thang", "Hôm qua", null),
-                                        HistoryItemData("2", "Ảnh thiên nhiên lúa bậc thang", "Hôm qua", null),
-                                        HistoryItemData("3", "Ảnh thiên nhiên lúa bậc thang", "Hôm qua", null),
-                                        HistoryItemData("4", "Ảnh thiên nhiên lúa bậc thang", "Hôm qua", null)
-                                    )
-                                }
-
                                 HistoryScreen(
-                                    historyList = mockHistoryList,
+                                    historyList = recentHistory,
                                     onItemClick = { item ->
                                         currentScreen = Screen.Results(
                                             pages = listOf(item.title),
@@ -281,9 +289,9 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            // ─── ĐÃ SỬA: BỔ SUNG ĐẦY ĐỦ CALLBACK ĐIỀU HƯỚNG CHO FILESSCREEN ───
                             Screen.Files -> {
                                 FilesScreen(
+                                    scanRepository = scanRepository,
                                     onNavigateToSection = { sectionName ->
                                         when (sectionName) {
                                             "Trang chủ" -> currentScreen = Screen.Home
@@ -292,7 +300,25 @@ class MainActivity : ComponentActivity() {
                                             "Hồ sơ" -> currentScreen = Screen.Profile
                                         }
                                     },
-                                    onCenterFabClick = openScannerWithPermissionCheck // Đã sửa lỗi nút giữa máy ảnh ở tab Tệp
+                                    onCenterFabClick = openScannerWithPermissionCheck,
+                                    onOpenScan = { scan ->
+                                        currentScreen = Screen.Results(
+                                            pages = listOf(scan.title),
+                                            imagePath = scan.imagePath,
+                                            allImagePaths = if (scan.imagePath.isNotBlank()) listOf(scan.imagePath) else emptyList()
+                                        )
+                                    },
+                                    onDeleteScan = { scan ->
+                                        scope.launch(Dispatchers.IO) {
+                                            try {
+                                                if (scan.imagePath.isNotBlank()) File(scan.imagePath).delete()
+                                                if (scan.pdfPath.isNotBlank()) File(scan.pdfPath).delete()
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                            }
+                                            scanRepository.deleteScan(scan.id)
+                                        }
+                                    }
                                 )
                             }
 
@@ -339,7 +365,6 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            // ─── ĐÃ SỬA: BỔ SUNG ĐẦY ĐỦ CÁC ĐƯỜNG LINK CALLBACK BỊ THIẾU CHO SETTINGSSCREEN ───
                             Screen.Settings -> {
                                 val settingsViewModel: com.t2h.ocr.ui.settings.SettingsViewModel = viewModel(
                                     factory = com.t2h.ocr.ui.settings.SettingsViewModelFactory(
@@ -354,9 +379,9 @@ class MainActivity : ComponentActivity() {
                                     viewModel = settingsViewModel,
                                     onBack = { currentScreen = Screen.Profile },
                                     onNavigateToHome = { currentScreen = Screen.Home },
-                                    onNavigateToHistory = { currentScreen = Screen.Files }, // Chuyển hướng sang giao diện Tệp mới
+                                    onNavigateToHistory = { currentScreen = Screen.Files },
                                     onNavigateToProfile = { currentScreen = Screen.Profile },
-                                    onNavigateToScanner = openScannerWithPermissionCheck // Sửa lỗi đơ nút máy ảnh giữa ở màn Settings
+                                    onNavigateToScanner = openScannerWithPermissionCheck
                                 )
                             }
 
@@ -492,5 +517,20 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         recognizer.close()
+    }
+}
+
+private fun formatRelativeTime(timestamp: Long): String {
+    if (timestamp <= 0L) return ""
+    val diff = System.currentTimeMillis() - timestamp
+    val minutes = diff / 60_000
+    val hours = diff / 3_600_000
+    val days = diff / 86_400_000
+    return when {
+        diff < 60_000 -> "Vừa xong"
+        diff < 3_600_000 -> "${minutes} phút trước"
+        diff < 86_400_000 -> "${hours} giờ trước"
+        diff < 172_800_000 -> "Hôm qua"
+        else -> SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(timestamp))
     }
 }
