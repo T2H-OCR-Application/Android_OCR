@@ -1,24 +1,28 @@
-<!-- refreshed: 2025-01-16 -->
+<!-- refreshed: 2026-05-31 -->
 # Architecture
 
-**Analysis Date:** 2025-01-16
+**Analysis Date:** 2026-05-31
 
 ## System Overview
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│                      Presentation Layer                     │
-├─────────────────────────────────────────────────────────────┤
-│   UI Components (Compose)       │       Activity (Entry)    │
-│  `app/src/main/java/.../ui`     │      `MainActivity.kt`    │
-└────────┬───────────────────────────────────┬────────────────┘
-         │                                   │
-         ▼                                   ▼
+│                      UI Layer (Compose)                     │
+├──────────────────┬──────────────────┬───────────────────────┤
+│   Screens        │   ViewModels     │    Components         │
+│  `ui/*.kt`       │  `ui/**/*VM.kt`  │   `ui/components/`    │
+└────────┬─────────┴────────┬─────────┴──────────┬────────────┘
+         │                  │                     │
+         ▼                  ▼                     ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    External Services / SDKs                 │
-├─────────────────────────────────────────────────────────────┤
-│       ML Kit (OCR)         │          Firebase              │
-│  (Google ML Kit SDK)       │  (Auth, Firestore, Storage)    │
+│                    Domain Layer (Logic)                      │
+│         `domain/ocr/`, `domain/observability/`               │
+└─────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Data Layer (Persistence & Sync)                             │
+│  `data/local/`, `data/auth/`, `data/sync/`                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -26,88 +30,121 @@
 
 | Component | Responsibility | File |
 |-----------|----------------|------|
-| `MainActivity` | Main entry point, hosts the Jetpack Compose UI content. | `app/src/main/java/com/t2h/ocr/MainActivity.kt` |
-| `FrontendAndroidOCRTheme` | Defines the Material 3 color scheme, typography, and theme for the app. | `app/src/main/java/com/t2h/ocr/ui/theme/Theme.kt` |
-| `AndroidManifest` | App configuration, permissions, and component declaration. | `app/src/main/AndroidManifest.xml` |
+| MainActivity | Entry point, Navigation, Global State | `MainActivity.kt` |
+| ScanRepository | Single source of truth for scan data | `data/ScanRepository.kt` |
+| AuthRepository | Manages Firebase Authentication | `data/auth/AuthRepository.kt` |
+| ImageProcessor | OpenCV-based image manipulation (warping) | `domain/ocr/ImageProcessor.kt` |
+| DocumentAnalyzer | Orchestrates OCR via ML Kit | `domain/ocr/DocumentAnalyzer.kt` |
+| PdfGenerator | Creates searchable PDFs from scans | `domain/ocr/PdfGenerator.kt` |
+| ScannerViewModel | Manages camera state and capture flow | `ui/scanner/ScannerViewModel.kt` |
 
 ## Pattern Overview
 
-**Overall:** Standard Android Development with Jetpack Compose.
+**Overall:** MVVM (Model-View-ViewModel) with Clean Architecture principles.
 
 **Key Characteristics:**
-- **Declarative UI:** Uses Jetpack Compose for building the user interface.
-- **Service Integration:** Relies on Google ML Kit for OCR and Firebase for backend services.
-- **Material 3:** Follows Material Design 3 guidelines for UI components.
+- **Layered Architecture:** Clear separation between UI, Domain logic, and Data persistence.
+- **Unidirectional Data Flow:** State flows down from ViewModels to Composables; events flow up.
+- **Single Activity:** `MainActivity` acts as the host and navigation controller using manual state management.
 
 ## Layers
 
-**Presentation Layer:**
-- Purpose: Handles user interaction and displays information.
-- Location: `app/src/main/java/com/t2h/ocr/ui/` and `MainActivity.kt`.
-- Contains: Composable functions, Themes, and Activities.
-- Depends on: Jetpack Compose libraries, Android Framework.
-- Used by: End users.
+**UI Layer:**
+- Purpose: Renders the user interface and handles user interactions.
+- Location: `app/src/main/java/com/t2h/ocr/ui`
+- Contains: Jetpack Compose screens, ViewModels, and reusable UI components.
+- Depends on: Domain Layer, Data Layer (via Repositories).
+- Used by: Android System.
 
-**Data/External Layer:**
-- Purpose: Provides specialized services like text recognition and cloud storage.
-- Location: Integrated via SDKs in `app/build.gradle.kts`.
-- Contains: ML Kit and Firebase SDKs.
-- Depends on: Google Play Services.
-- Used by: Presentation layer (intended).
+**Domain Layer:**
+- Purpose: Contains core business logic and pure processing logic.
+- Location: `app/src/main/java/com/t2h/ocr/domain`
+- Contains: OCR logic, Image processing (OpenCV), PDF generation, Analytics helpers.
+- Depends on: None (ideally) or Android-specific APIs for processing.
+- Used by: UI Layer (ViewModels).
+
+**Data Layer:**
+- Purpose: Handles data persistence and remote synchronization.
+- Location: `app/src/main/java/com/t2h/ocr/data`
+- Contains: Repositories, Room database (implied), DataStore, Firebase integration, Google Drive sync logic.
+- Depends on: External libraries (Firebase, Google API).
+- Used by: UI Layer (ViewModels), MainActivity.
 
 ## Data Flow
 
-### Primary Request Path (Anticipated)
+### Primary Request Path (Scanning Flow)
 
-1. **User Action:** User captures or selects an image in the UI.
-2. **Processing:** UI passes the image to ML Kit for text recognition.
-3. **Result:** Recognized text is returned to the UI for display or further processing.
-4. **Storage:** Text or image data is optionally saved to Firebase Firestore/Storage.
+1. **Capture:** `ScannerScreen` triggers capture in `ScannerViewModel` (`ui/scanner/ScannerScreen.kt`).
+2. **Crop:** User adjusts boundaries in `CropScreen`; `MainActivity` calls `processAndOcr` (`MainActivity.kt:387`).
+3. **Processing:** `ImageProcessor.warpPerspective` applies OpenCV transformations (`domain/ocr/ImageProcessor.kt`).
+4. **OCR:** `TextRecognition` extracts text from the warped image (`MainActivity.kt:403`).
+5. **Results:** `ResultsViewModel` saves metadata via `ScanRepository` (`ui/results/ResultsViewModel.kt`).
+6. **Sync:** `SyncWorker` (WorkManager) uploads files to Google Drive/Firestore in the background (`data/sync/SyncWorker.kt`).
+
+### Authentication Flow
+
+1. **Auto-Login:** `MainActivity` calls `authRepository.signInAnonymously()` on startup.
+2. **Link Account:** `ProfileScreen` triggers Google Sign-In via `AuthRepository`.
+3. **State Updates:** UI reacts to `currentUser` Flow from `AuthRepository`.
 
 **State Management:**
-- Currently managed within Composable functions using `remember` and `mutableStateOf` (minimal state exists currently).
+- State is managed within ViewModels using `MutableStateFlow`.
+- `MainActivity` holds the top-level `currentScreen` state for navigation.
+- Persistent state is stored in `ScanRepository` (backed by `ScanStorage`/Room).
 
 ## Key Abstractions
 
-**Theme:**
-- Purpose: Centralizes styling (colors, types) for the entire application.
-- Examples: `app/src/main/java/com/t2h/ocr/ui/theme/`
-- Pattern: Material 3 Theme wrapping.
+**Repository:**
+- Purpose: Abstracts data sources for the rest of the app.
+- Examples: `data/ScanRepository.kt`, `data/auth/AuthRepository.kt`
+- Pattern: Repository Pattern.
+
+**ViewModel:**
+- Purpose: Bridges the UI and Data/Domain layers, maintaining UI state across configuration changes.
+- Examples: `ui/home/HomeViewModel.kt`, `ui/scanner/ScannerViewModel.kt`
+- Pattern: MVVM ViewModel.
 
 ## Entry Points
 
 **MainActivity:**
 - Location: `app/src/main/java/com/t2h/ocr/MainActivity.kt`
-- Triggers: System launch.
-- Responsibilities: Initializes the app, sets up edge-to-edge display, and provides the root Composable content.
+- Triggers: App Launch.
+- Responsibilities: Initializes OpenCV, Firebase; sets up Compose content; manages navigation and permissions.
 
 ## Architectural Constraints
 
-- **Threading:** Android main thread for UI; ML Kit and Firebase operations are typically asynchronous/off-loaded to background threads.
-- **Global state:** No significant global state implemented yet.
-- **Permissions:** Requires Camera/Storage permissions (to be implemented in `AndroidManifest.xml`).
+- **Threading:** Heavy operations (OCR, Image Processing, PDF Gen) MUST run on `Dispatchers.IO` or `Dispatchers.Default` to avoid blocking the UI thread.
+- **Global state:** `ScanRepository` is accessed as a singleton via `getInstance(context)`.
+- **Manual DI:** Dependency injection is handled manually via `ViewModelFactory` classes or direct instantiation in `MainActivity`.
 
 ## Anti-Patterns
 
-### Logic in Activity
+### Logic in MainActivity
 
-**What happens:** Placing business logic or OCR processing directly in `MainActivity.kt`.
-**Why it's wrong:** Makes the code hard to test and maintain; violates separation of concerns.
-**Do this instead:** Use ViewModels and Repository patterns to encapsulate logic.
+**What happens:** Business logic or navigation logic growing too large in `MainActivity.kt`.
+**Why it's wrong:** Violates Single Responsibility Principle; makes testing difficult.
+**Do this instead:** Move logic to dedicated ViewModels or UseCases in the Domain layer.
+
+### Manual Navigation State
+
+**What happens:** Using a `sealed class Screen` and `mutableStateOf` for navigation instead of Jetpack Navigation Component.
+**Why it's wrong:** Harder to manage deep links and complex backstack behaviors.
+**Do this instead:** Consider migrating to `androidx.navigation:navigation-compose` if complexity increases.
 
 ## Error Handling
 
-**Strategy:** Not yet explicitly defined in the codebase.
+**Strategy:** Result-based handling and localized UI feedback.
 
 **Patterns:**
-- Standard Kotlin try-catch for synchronous operations.
-- Firebase/ML Kit listeners/callbacks for asynchronous operations.
+- Try-catch blocks in Coroutines with logging to `AnalyticsHelper`.
+- State-based error messages (e.g., `isError` flag in UI state).
 
 ## Cross-Cutting Concerns
 
-**Logging:** Uses standard Android `Log` (not explicitly seen in sample code yet).
-**Authentication:** Firebase Auth is integrated but not yet implemented in UI.
+**Logging:** Handled by `AnalyticsHelper` and `Log` class.
+**Validation:** Local validation in ViewModels before repository calls.
+**Authentication:** Centralized in `AuthRepository` using Firebase Auth.
 
 ---
 
-*Architecture analysis: 2025-01-16*
+*Architecture analysis: 2026-05-31*

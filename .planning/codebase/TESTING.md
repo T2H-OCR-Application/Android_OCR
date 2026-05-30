@@ -1,96 +1,173 @@
 # Testing Patterns
 
-**Analysis Date:** 2025-01-24
+**Analysis Date:** 2026-05-31
 
 ## Test Framework
 
 **Runner:**
-- JUnit 4
-- `androidx.test.runner.AndroidJUnitRunner` for instrumented tests.
+- Unit Tests: JUnit 4, Robolectric.
+- Instrumented Tests: `AndroidJUnitRunner` (configured in `app/build.gradle.kts`).
 
 **Assertion Library:**
-- `org.junit.Assert`
+- JUnit Assert (e.g., `assertEquals`, `assertTrue`).
+- Compose UI Test assertions (e.g., `assertIsDisplayed()`).
 
 **Run Commands:**
 ```bash
-./gradlew test         # Run local unit tests
-./gradlew connectedAndroidTest # Run instrumented tests on device
+./gradlew test         # Run all unit tests
+./gradlew connectedCheck # Run all instrumented tests
+./gradlew recordRoborazziDebug # Record snapshots
+./gradlew verifyRoborazziDebug # Verify snapshots
 ```
 
 ## Test File Organization
 
 **Location:**
-- Local unit tests: `app/src/test/java/com/t2h/ocr/`
-- Instrumented tests: `app/src/androidTest/java/com/t2h/ocr/`
+- Unit tests: `app/src/test/java/com/t2h/ocr/`.
+- Instrumented tests: `app/src/androidTest/java/com/t2h/ocr/`.
+- Snapshots: `app/src/test/snapshots/` (configured via `roborazzi` plugin).
 
 **Naming:**
-- Unit tests: `*UnitTest.kt` (e.g., `ExampleUnitTest.kt`)
-- Instrumented tests: `*InstrumentedTest.kt` (e.g., `ExampleInstrumentedTest.kt`)
+- PascalCase with `Test` suffix (e.g., `HomeViewModelTest.kt`, `HomeScreenTest.kt`).
+
+**Structure:**
+```
+app/src/test/
+├── java/com/t2h/ocr/
+│   ├── data/
+│   ├── domain/
+│   └── ui/
+└── snapshots/
+app/src/androidTest/
+└── java/com/t2h/ocr/
+```
 
 ## Test Structure
 
 **Suite Organization:**
 ```kotlin
-class ExampleUnitTest {
+@OptIn(ExperimentalCoroutinesApi::class)
+class HomeViewModelTest {
+    private val testDispatcher = StandardTestDispatcher()
+    
+    @Before
+    fun setup() {
+        Dispatchers.setMain(testDispatcher)
+        // Setup mocks and ViewModel
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
     @Test
-    fun addition_isCorrect() {
-        assertEquals(4, 2 + 2)
+    fun `descriptive test name using backticks`() = runTest {
+        // Given
+        // When
+        // Then
     }
 }
 ```
 
 **Patterns:**
-- Standard `@Test` annotation.
-- `@RunWith(AndroidJUnit4::class)` for instrumented tests in `app/src/androidTest/java/com/t2h/ocr/ExampleInstrumentedTest.kt`.
+- **Setup pattern:** `@Before` method to initialize mocks and the class under test.
+- **Teardown pattern:** `@After` method to reset main dispatcher for coroutines.
+- **Assertion pattern:** Use of `runTest` for coroutine testing and `testDispatcher.scheduler.advanceUntilIdle()` for timing control.
 
 ## Mocking
 
-**Framework:** Not explicitly configured (e.g., Mockito or MockK are not in `libs.versions.toml`).
+**Framework:** MockK (`io.mockk`)
+
+**Patterns:**
+```kotlin
+// Creating a mock
+val fakeRepository = mockk<ScanRepository>(relaxed = true)
+
+// Stubbing behavior
+every { fakeRepository.scans } returns flowOf(listOf(...))
+
+// Verification
+verify { fakeRepository.deleteScan(any()) }
+```
 
 **What to Mock:**
-- N/A
+- External dependencies (Repositories, WorkManager, Firebase).
+- Android components that require a context (unless using Robolectric).
 
 **What NOT to Mock:**
-- N/A
+- Plain data models (`ScanMetadata`, `ScannedPage`).
+- Utility functions or objects that don't have side effects.
 
 ## Fixtures and Factories
 
 **Test Data:**
-- No complex fixtures detected. Simple assertions in `ExampleUnitTest.kt`.
+- Manual instantiation in tests.
+- Example:
+```kotlin
+val scans = listOf(
+    ScanMetadata(id = "1", title = "Scan 1", ocrText = "Text 1"),
+    ScanMetadata(id = "2", title = "Scan 2", ocrText = "Text 2")
+)
+```
 
 **Location:**
-- Co-located in test classes.
+- Often defined within the test class or as helper functions in the same package.
 
 ## Coverage
 
-**Requirements:** None enforced in `build.gradle.kts`.
+**Requirements:** None explicitly enforced in `build.gradle.kts`.
 
 **View Coverage:**
-- Use Android Studio's "Run with Coverage" or add Jacoco plugin.
+```bash
+./gradlew testDebugUnitTestCoverage # (if jacoco is configured, not observed here)
+```
 
 ## Test Types
 
 **Unit Tests:**
+- Test ViewModels, Repositories, and domain logic.
 - Located in `app/src/test`.
-- Execute on JVM.
-- Used for logic that doesn't depend on Android framework.
 
 **Integration Tests:**
-- Located in `app/src/androidTest`.
-- Execute on an Android device or emulator.
-- Used for UI tests and Android framework integration.
+- Test flows like `ScanFlowTest` in `app/src/androidTest`.
+- WorkManager tests using `work-testing`.
 
 **E2E Tests:**
-- Likely handled by `androidTest` using Espresso/Compose UI Test.
+- Not explicitly labeled as E2E, but `ScanFlowTest` covers significant parts of the user flow.
+
+**Snapshot Tests:**
+- Roborazzi is used for UI snapshot testing.
+- Located in `app/src/test/java/com/t2h/ocr/ui/SnapshotTests.kt`.
+- Uses Robolectric to run in the unit test environment.
 
 ## Common Patterns
 
 **Async Testing:**
-- Not observed in current tests.
+```kotlin
+@Test
+fun testAsyncOperation() = runTest {
+    // ...
+    testDispatcher.scheduler.advanceUntilIdle()
+    // assertions
+}
+```
 
 **Error Testing:**
-- Not observed in current tests.
+```kotlin
+@Test(expected = Exception::class)
+fun testError() {
+    // operation that should throw
+}
+// OR
+@Test
+fun testErrorState() = runTest {
+    every { repository.doSomething() } throws Exception()
+    viewModel.action()
+    assertEquals(ExpectedError, viewModel.uiState.value.error)
+}
+```
 
 ---
 
-*Testing analysis: 2025-01-24*
+*Testing analysis: 2026-05-31*

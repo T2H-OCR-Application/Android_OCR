@@ -1,94 +1,107 @@
 # Codebase Structure
 
-**Analysis Date:** 2025-01-16
+**Analysis Date:** 2026-05-31
 
 ## Directory Layout
 
 ```
 [project-root]/
-├── app/                  # Main application module
+├── app/                    # Main Android application module
 │   ├── src/
 │   │   ├── main/
-│   │   │   ├── java/     # Kotlin source code
-│   │   │   ├── res/      # Android resources (XML, drawables)
+│   │   │   ├── java/com/t2h/ocr/
+│   │   │   │   ├── data/   # Data layer (Repositories, Storage, Sync)
+│   │   │   │   ├── domain/ # Domain layer (OCR, Image Processing, Logic)
+│   │   │   │   ├── ui/     # UI layer (Screens, ViewModels, Components)
+│   │   │   │   └── MainActivity.kt
+│   │   │   ├── res/        # Android resources (drawables, values, etc.)
 │   │   │   └── AndroidManifest.xml
-│   │   ├── test/         # Local unit tests
-│   │   └── androidTest/  # Instrumented tests
-│   ├── build.gradle.kts  # Module-level build config
-│   └── google-services.json # Firebase configuration
-├── gradle/               # Gradle wrapper and version catalog
-│   └── libs.versions.toml # Dependency version management
-├── build.gradle.kts      # Project-level build config
-└── settings.gradle.kts   # Project settings and module inclusion
+│   │   ├── test/           # Local unit tests
+│   │   └── androidTest/    # Instrumental tests
+│   ├── build.gradle.kts
+│   └── google-services.json
+├── gradle/                 # Gradle wrapper and version catalog
+├── build.gradle.kts        # Root build config
+├── settings.gradle.kts     # Project settings
+└── .planning/              # Project documentation and roadmap
 ```
 
 ## Directory Purposes
 
-**app/src/main/java/com/t2h/ocr:**
-- Purpose: Primary package for the application.
-- Contains: `MainActivity.kt` and sub-packages for UI, data, etc.
-- Key files: `MainActivity.kt`
+**com.t2h.ocr.data:**
+- Purpose: Data fetching, persistence, and synchronization.
+- Contains: Repositories, Room entities/DAOs, DataStore preferences, Firebase integrations, WorkManager sync logic.
+- Key files: `ScanRepository.kt`, `data/auth/AuthRepository.kt`, `data/sync/SyncWorker.kt`.
 
-**app/src/main/java/com/t2h/ocr/ui/theme:**
-- Purpose: Jetpack Compose theme definitions.
-- Contains: Color, Type, and Theme Kotlin files.
-- Key files: `Theme.kt`, `Color.kt`, `Type.kt`
+**com.t2h.ocr.domain:**
+- Purpose: Business logic and pure processing logic.
+- Contains: OCR engine wrappers, OpenCV image processing logic, PDF generation logic, Analytics helpers.
+- Key files: `domain/ocr/ImageProcessor.kt`, `domain/ocr/PdfGenerator.kt`, `domain/observability/AnalyticsHelper.kt`.
 
-**app/src/main/res:**
-- Purpose: Static resources for the Android app.
-- Contains: Layouts (though minimal due to Compose), drawables, mipmaps (icons), and strings.
-- Key files: `values/strings.xml`, `values/themes.xml`
+**com.t2h.ocr.ui:**
+- Purpose: User interface and UI state management.
+- Contains: Jetpack Compose screens, ViewModels, shared components, and themes.
+- Key files: `ui/home/HomeScreen.kt`, `ui/scanner/ScannerViewModel.kt`, `ui/theme/Theme.kt`.
+
+**app/src/test:**
+- Purpose: Unit testing for logic that doesn't require Android framework.
+- Contains: ViewModel tests, Repository tests, Processor tests.
 
 ## Key File Locations
 
 **Entry Points:**
-- `app/src/main/java/com/t2h/ocr/MainActivity.kt`: Initial Activity launched by the OS.
+- `app/src/main/java/com/t2h/ocr/MainActivity.kt`: Main entry point and navigation host.
 
 **Configuration:**
-- `app/build.gradle.kts`: Dependencies, SDK versions, and build features (Compose).
-- `gradle/libs.versions.toml`: Centralized versioning for all dependencies.
-- `app/google-services.json`: Firebase project configuration.
+- `gradle/libs.versions.toml`: Version catalog for all dependencies.
+- `app/build.gradle.kts`: App-level build configuration.
+- `app/src/main/res/values/strings.xml`: Localized strings.
 
 **Core Logic:**
-- Currently centralized in `MainActivity.kt` (minimal).
+- `app/src/main/java/com/t2h/ocr/domain/ocr/ImageProcessor.kt`: OpenCV warping logic.
+- `app/src/main/java/com/t2h/ocr/domain/ocr/PdfGenerator.kt`: Searchable PDF creation.
 
 **Testing:**
-- `app/src/test/java/com/t2h/ocr/ExampleUnitTest.kt`: Unit tests for non-Android logic.
-- `app/src/androidTest/java/com/t2h/ocr/ExampleInstrumentedTest.kt`: UI/Integration tests requiring an Android device.
+- `app/src/test/java/com/t2h/ocr/`: Unit tests.
+- `app/src/androidTest/java/com/t2h/ocr/`: Instrumental tests (Camera, Storage).
 
 ## Naming Conventions
 
 **Files:**
-- Kotlin Classes: PascalCase (`MainActivity.kt`)
-- Composable Functions: PascalCase (`Greeting`)
-- Resource Files: snake_case (`ic_launcher_background.xml`)
+- Composable Screens: `[Feature]Screen.kt` (e.g., `HomeScreen.kt`)
+- ViewModels: `[Feature]ViewModel.kt` (e.g., `ScannerViewModel.kt`)
+- Repositories: `[Data]Repository.kt` (e.g., `AuthRepository.kt`)
 
 **Directories:**
-- Packages: Lowercase with dots (`com.t2h.ocr`)
-- Resources: Lowercase with underscores (`drawable`, `values`)
+- Feature-based packaging within `ui/` layer.
+- Layer-based packaging at the top level (`data`, `domain`, `ui`).
 
 ## Where to Add New Code
 
 **New Feature:**
-- Primary UI: `app/src/main/java/com/t2h/ocr/ui/features/[feature_name]/`
-- ViewModel: `app/src/main/java/com/t2h/ocr/ui/viewmodel/`
-- Tests: `app/src/test/java/com/t2h/ocr/`
+- UI & ViewModel: `app/src/main/java/com/t2h/ocr/ui/[feature_name]/`
+- Business Logic: `app/src/main/java/com/t2h/ocr/domain/[domain_area]/`
+- Data/Persistence: `app/src/main/java/com/t2h/ocr/data/` (or sub-package)
+- Tests: `app/src/test/java/com/t2h/ocr/ui/[feature_name]/`
 
 **New Component/Module:**
-- Shared Composable: `app/src/main/java/com/t2h/ocr/ui/components/`
-- OCR Logic: `app/src/main/java/com/t2h/ocr/data/ocr/`
-- Firebase Service: `app/src/main/java/com/t2h/ocr/data/firebase/`
+- Implementation: `app/src/main/java/com/t2h/ocr/ui/components/`
 
 **Utilities:**
-- Shared helpers: `app/src/main/java/com/t2h/ocr/util/`
+- Shared helpers: `app/src/main/java/com/t2h/ocr/domain/` or specialized util package.
 
 ## Special Directories
 
-**app/src/main/res/xml:**
-- Purpose: XML configuration files for backup and data extraction rules.
-- Generated: No
-- Committed: Yes
+**app/src/test/snapshots:**
+- Purpose: Contains Roborazzi screenshot test outputs.
+- Generated: Yes.
+- Committed: Yes (for baseline comparison).
+
+**app/build/ (ignored):**
+- Purpose: Compiled artifacts and build outputs.
+- Generated: Yes.
+- Committed: No.
 
 ---
 
-*Structure analysis: 2025-01-16*
+*Structure analysis: 2026-05-31*
