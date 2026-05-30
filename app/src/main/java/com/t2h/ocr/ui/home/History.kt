@@ -63,7 +63,8 @@ fun HistoryScreen(
         } else {
             historyList.filter {
                 it.title.contains(searchQuery, ignoreCase = true) ||
-                        it.timeString.contains(searchQuery, ignoreCase = true)
+                        it.timeString.contains(searchQuery, ignoreCase = true) ||
+                        it.ocrText.contains(searchQuery, ignoreCase = true)
             }
         }
     }

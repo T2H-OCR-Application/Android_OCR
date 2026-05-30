@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Search
@@ -19,8 +20,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,7 +49,8 @@ fun HomeScreen(
         } else {
             recentHistory.filter { item ->
                 item.title.contains(searchQuery, ignoreCase = true) ||
-                        item.timeString.contains(searchQuery, ignoreCase = true)
+                        item.timeString.contains(searchQuery, ignoreCase = true) ||
+                        item.ocrText.contains(searchQuery, ignoreCase = true)
             }
         }
     }
@@ -89,12 +93,22 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "Tìm kiếm ....",
-                        color = Color.Gray.copy(alpha = 0.7f),
-                        fontSize = 14.sp,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (searchQuery.isEmpty()) {
+                            Text(
+                                text = "Tìm kiếm ....",
+                                color = Color.Gray.copy(alpha = 0.7f),
+                                fontSize = 14.sp
+                            )
+                        }
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            textStyle = TextStyle(color = Color.White, fontSize = 14.sp),
+                            cursorBrush = SolidColor(Color(0xFF14B8A6)),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search Icon",
