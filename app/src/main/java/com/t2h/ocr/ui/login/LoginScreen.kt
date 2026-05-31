@@ -1,11 +1,12 @@
 package com.t2h.ocr.ui.login
 
-import android.app.Activity
 import android.util.Log
 import android.util.Patterns
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -44,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,13 +62,11 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.common.api.Scope
-import com.google.api.services.drive.DriveScopes
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.t2h.ocr.R
 import com.t2h.ocr.data.auth.AuthRepository
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
@@ -83,45 +83,9 @@ fun LoginScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val googleFailedTokenMsg = "Google Sign-In failed: No ID Token"
-    val googleFailedStatusMsg = "Google Sign-In failed: status=%d, message=%s"
-    val googleFailedResultMsg = "Google Sign-In failed: result=%d"
     val signInCancelledMsg = "Sign-In cancelled"
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-            try {
-                val account = task.getResult(ApiException::class.java)
-                val idToken = account?.idToken
-                if (idToken != null) {
-                    isLoading = true
-                    errorMessage = null
-                    authRepository.signInWithGoogle(idToken) { success ->
-                        isLoading = false
-                        if (success) {
-                            onAuthSuccess()
-                        } else {
-                            errorMessage = "Firebase authentication with Google failed"
-                        }
-                    }
-                } else {
-                    errorMessage = googleFailedTokenMsg
-                }
-            } catch (e: ApiException) {
-                Log.e("LoginScreen", "Google sign in failed", e)
-                errorMessage = String.format(googleFailedStatusMsg, e.statusCode, e.message ?: "")
-            }
-        } else {
-            if (result.resultCode != Activity.RESULT_CANCELED) {
-                errorMessage = String.format(googleFailedResultMsg, result.resultCode)
-            } else {
-                Toast.makeText(context, signInCancelledMsg, Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
+    val scope = rememberCoroutineScope()
+    val credentialManager = remember { CredentialManager.create(context) }
 
     AuthBackground {
         Column(
@@ -222,16 +186,32 @@ fun LoginScreen(
             SocialButton(
                 iconResId = R.drawable.google_icon,
                 onClick = {
-                    val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                        .requestIdToken(context.getString(R.string.default_web_client_id))
-                        .requestEmail()
-                        .requestScopes(Scope(DriveScopes.DRIVE_FILE))
-                        .build()
-                    val googleSignInClient = GoogleSignIn.getClient(context, gso)
-                    
-                    // Call signOut before signing in to prevent cached cancelled states
-                    googleSignInClient.signOut().addOnCompleteListener {
-                        launcher.launch(googleSignInClient.signInIntent)
+                    scope.launch {
+                        try {
+                            isLoading = true
+                            errorMessage = null
+                            val request = GetCredentialRequest.Builder()
+                                .addCredentialOption(
+                                    GetSignInWithGoogleOption.Builder(
+                                        context.getString(R.string.default_web_client_id)
+                                    ).build()
+                                )
+                                .build()
+                            val credResult = credentialManager.getCredential(context, request)
+                            val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credResult.credential.data)
+                            authRepository.signInWithGoogle(googleIdTokenCredential.idToken) { success ->
+                                isLoading = false
+                                if (success) onAuthSuccess()
+                                else errorMessage = "Firebase authentication with Google failed"
+                            }
+                        } catch (e: GetCredentialCancellationException) {
+                            isLoading = false
+                            Toast.makeText(context, signInCancelledMsg, Toast.LENGTH_SHORT).show()
+                        } catch (e: GetCredentialException) {
+                            isLoading = false
+                            Log.e("LoginScreen", "Credential error", e)
+                            errorMessage = "Sign-in failed: ${e.message}"
+                        }
                     }
                 }
             )

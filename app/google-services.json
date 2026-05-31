@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "640867640781-ik6vv5kimqm8hfkcnsop8t9or4rpf6oe.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.t2h.ocr",
+            "certificate_hash": "5ca680490e36b38f2c33b02082e5d77f6c0c57c7"
+          }
+        },
+        {
           "client_id": "640867640781-boe7f3v256nbs0v5cm6gbmo5d1l78qt3.apps.googleusercontent.com",
           "client_type": 3
         }

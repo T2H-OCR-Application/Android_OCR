@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Android OCR</string>
-    <string name="default_web_client_id">640867640781-et954voeu0u4hg2us8s9lv75lubiskpp.apps.googleusercontent.com</string>
+    <string name="default_web_client_id">640867640781-boe7f3v256nbs0v5cm6gbmo5d1l78qt3.apps.googleusercontent.com</string>
 
     <!-- Errors -->
     <string name="error_camera_title">Camera Unavailable</string>

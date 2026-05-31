@@ -1,10 +1,11 @@
 package com.t2h.ocr.ui.profile
 
-import android.app.Activity
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,12 +29,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.common.api.Scope
-import com.google.api.services.drive.DriveScopes
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 import com.t2h.ocr.R
 import com.t2h.ocr.data.auth.AuthRepository
 
@@ -61,45 +60,9 @@ fun ProfileScreen(
 
     val accountLinkedMsg = stringResource(R.string.toast_account_linked)
     val linkFailedMsg = stringResource(R.string.toast_link_failed)
-    val googleFailedTokenMsg = stringResource(R.string.toast_google_failed_token)
-    val googleFailedStatusMsg = stringResource(R.string.toast_google_failed_status)
-    val googleFailedResultMsg = stringResource(R.string.toast_google_failed_result)
     val signInCancelledMsg = stringResource(R.string.toast_sign_in_cancelled)
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-            try {
-                val account = task.getResult(ApiException::class.java)
-                val idToken = account?.idToken
-                if (idToken != null) {
-                    isLoading = true
-                    errorMessage = null
-                    authRepository.linkWithGoogle(idToken) { success ->
-                        isLoading = false
-                        if (success) {
-                            Toast.makeText(context, accountLinkedMsg, Toast.LENGTH_SHORT).show()
-                        } else {
-                            errorMessage = linkFailedMsg
-                        }
-                    }
-                } else {
-                    errorMessage = googleFailedTokenMsg
-                }
-            } catch (e: ApiException) {
-                Log.e("ProfileScreen", "Google sign in failed", e)
-                errorMessage = String.format(googleFailedStatusMsg, e.statusCode, e.message ?: "")
-            }
-        } else {
-            if (result.resultCode != Activity.RESULT_CANCELED) {
-                errorMessage = String.format(googleFailedResultMsg, result.resultCode)
-            } else {
-                Toast.makeText(context, signInCancelledMsg, Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
+    val scope = rememberCoroutineScope()
+    val credentialManager = remember { CredentialManager.create(context) }
 
     // ─── HỘP THOẠI XÁC NHẬN ĐĂNG XUẤT ───
     if (showLogoutDialog) {
@@ -131,9 +94,10 @@ fun ProfileScreen(
                         // 1. Đăng xuất hoàn toàn khỏi Firebase Auth
                         FirebaseAuth.getInstance().signOut()
 
-                        // 2. Đăng xuất khỏi Google SDK để không tự động điền tài khoản cũ vào lần sau
-                        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
-                        GoogleSignIn.getClient(context, gso).signOut()
+                        // 2. Clear Credential Manager state
+                        scope.launch {
+                            try { credentialManager.clearCredentialState(androidx.credentials.ClearCredentialStateRequest()) } catch (_: Exception) {}
+                        }
 
                         Toast.makeText(context, "Đã đăng xuất thành công", Toast.LENGTH_SHORT).show()
 
@@ -285,13 +249,33 @@ fun ProfileScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable(enabled = currentUser?.isAnonymous == true && !isLoading) {
-                                val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                                    .requestIdToken(context.getString(R.string.default_web_client_id))
-                                    .requestEmail()
-                                    .requestScopes(Scope(DriveScopes.DRIVE_FILE))
-                                    .build()
-                                val googleSignInClient = GoogleSignIn.getClient(context, gso)
-                                launcher.launch(googleSignInClient.signInIntent)
+                                scope.launch {
+                                    try {
+                                        isLoading = true
+                                        errorMessage = null
+                                        val request = GetCredentialRequest.Builder()
+                                            .addCredentialOption(
+                                                GetSignInWithGoogleOption.Builder(
+                                                    context.getString(R.string.default_web_client_id)
+                                                ).build()
+                                            )
+                                            .build()
+                                        val credResult = credentialManager.getCredential(context, request)
+                                        val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credResult.credential.data)
+                                        authRepository.linkWithGoogle(googleIdTokenCredential.idToken) { success ->
+                                            isLoading = false
+                                            if (success) Toast.makeText(context, accountLinkedMsg, Toast.LENGTH_SHORT).show()
+                                            else errorMessage = linkFailedMsg
+                                        }
+                                    } catch (e: GetCredentialCancellationException) {
+                                        isLoading = false
+                                        Toast.makeText(context, signInCancelledMsg, Toast.LENGTH_SHORT).show()
+                                    } catch (e: GetCredentialException) {
+                                        isLoading = false
+                                        Log.e("ProfileScreen", "Credential error", e)
+                                        errorMessage = "Sign-in failed: ${e.message}"
+                                    }
+                                }
                             }
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
