@@ -228,7 +228,11 @@ fun LoginScreen(
                         .requestScopes(Scope(DriveScopes.DRIVE_FILE))
                         .build()
                     val googleSignInClient = GoogleSignIn.getClient(context, gso)
-                    launcher.launch(googleSignInClient.signInIntent)
+                    
+                    // Call signOut before signing in to prevent cached cancelled states
+                    googleSignInClient.signOut().addOnCompleteListener {
+                        launcher.launch(googleSignInClient.signInIntent)
+                    }
                 }
             )
 
