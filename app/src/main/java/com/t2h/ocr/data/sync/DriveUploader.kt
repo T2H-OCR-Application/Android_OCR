@@ -1,10 +1,12 @@
 package com.t2h.ocr.data.sync
 
 import android.content.Context
+import android.content.Intent
 import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
+import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException
 import com.google.api.client.http.FileContent
+import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
@@ -12,15 +14,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
+sealed class UploadResult {
+    data class Success(val downloadUrl: String) : UploadResult()
+    data class Error(val message: String) : UploadResult()
+    data class NeedsConsent(val intent: Intent) : UploadResult()
+}
+
 class DriveUploader(private val context: Context) {
 
-    suspend fun uploadPdf(file: File, mimeType: String = "application/pdf"): String? = withContext(Dispatchers.IO) {
-        val account = GoogleSignIn.getLastSignedInAccount(context) ?: return@withContext null
+    suspend fun uploadPdf(file: File, mimeType: String = "application/pdf"): UploadResult = withContext(Dispatchers.IO) {
+        val account = GoogleSignIn.getLastSignedInAccount(context) ?: return@withContext UploadResult.Error("No Google account signed in")
         
         val credential = GoogleAccountCredential.usingOAuth2(
             context, listOf(DriveScopes.DRIVE_FILE)
         )
-        credential.selectedAccount = account.account ?: return@withContext null
+        credential.selectedAccount = account.account ?: return@withContext UploadResult.Error("No account selected")
 
         val driveService = Drive.Builder(
             NetHttpTransport(),
@@ -61,10 +69,12 @@ class DriveUploader(private val context: Context) {
                 .setFields("id, webViewLink")
                 .execute()
 
-            return@withContext uploadedFile.webViewLink
+            return@withContext UploadResult.Success(uploadedFile.webViewLink)
+        } catch (e: UserRecoverableAuthIOException) {
+            return@withContext UploadResult.NeedsConsent(e.intent)
         } catch (e: Exception) {
             e.printStackTrace()
-            return@withContext null
+            return@withContext UploadResult.Error(e.message ?: "Unknown error")
         }
     }
 }

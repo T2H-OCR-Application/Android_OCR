@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.google.services)
     alias(libs.plugins.roborazzi)
     kotlin("plugin.serialization") version "2.0.21"
+    kotlin("kapt")
 }
 
 android {
@@ -136,4 +137,13 @@ dependencies {
 
     // Serialization
     implementation(libs.kotlinx.serialization.json)
+    // Room (SQLite)
+    implementation("androidx.room:room-runtime:2.7.0")
+    implementation("androidx.room:room-ktx:2.7.0")
+    kapt("androidx.room:room-compiler:2.7.0")
+
+    // Credential Manager (modern Google Sign-In)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
 }

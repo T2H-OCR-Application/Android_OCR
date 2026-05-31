@@ -1,95 +1,103 @@
 # Codebase Concerns
 
-**Analysis Date:** 2025-01-24
+**Analysis Date:** 2025-05-14
 
 ## Tech Debt
 
-**Missing Architecture:**
-- Issue: The project currently lacks a defined architectural pattern (e.g., MVVM, MVI). All logic (if any) is expected to be placed in `MainActivity.kt`.
+**God Object (MainActivity):**
+- Issue: `MainActivity` manages too many responsibilities including navigation state, screen definitions, OCR logic coordination (`processAndOcr`), and repository instantiation.
 - Files: `app/src/main/java/com/t2h/ocr/MainActivity.kt`
-- Impact: As features are added, the codebase will become difficult to maintain and test.
-- Fix approach: Implement MVVM pattern with `ViewModel` and `Repository` layers.
+- Impact: Poor maintainability, difficult to unit test navigation and flow logic, high risk of regressions.
+- Fix approach: Implement `navigation-compose` for routing and move business logic/coordination to `ViewModels` and `UseCases`.
 
-**Boilerplate Code:**
-- Issue: `MainActivity.kt` and tests are still in their initial boilerplate state from the Android Studio template.
-- Files: `app/src/main/java/com/t2h/ocr/MainActivity.kt`, `app/src/test/java/com/t2h/ocr/ExampleUnitTest.kt`
-- Impact: The project doesn't perform any of its intended OCR functionality.
-- Fix approach: Replace boilerplate with actual business logic and meaningful tests.
+**JSON-Based Metadata Storage:**
+- Issue: Metadata for scans is stored in a single JSON file managed by `JsonStorage`. Every write operation requires reading/writing the entire file.
+- Files: `app/src/main/java/com/t2h/ocr/data/local/JsonStorage.kt`
+- Impact: Performance degrades as the number of scans grows (O(N) operations). Risk of data corruption if writes are interrupted.
+- Fix approach: Replace `JsonStorage` with a Room database for efficient querying and atomic updates.
+
+**Manual Resource Management:**
+- Issue: Native OpenCV `Mat` and Android `Bitmap` resources are manually managed with `.release()` and `.recycle()`.
+- Files: `app/src/main/java/com/t2h/ocr/domain/ocr/DocumentAnalyzer.kt`, `app/src/main/java/com/t2h/ocr/MainActivity.kt`
+- Impact: High risk of memory leaks if a release call is missed in an early return or exception path.
+- Fix approach: Use wrapper classes with `AutoCloseable` or `use` extension functions consistently; transition to more robust resource tracking.
+
+**Weak Error Handling:**
+- Issue: Extensive use of `e.printStackTrace()` instead of structured logging or crash reporting.
+- Files: `app/src/main/java/com/t2h/ocr/data/local/JsonStorage.kt`, `app/src/main/java/com/t2h/ocr/ui/home/HomeViewModel.kt`, `app/src/main/java/com/t2h/ocr/ui/results/ResultsViewModel.kt`
+- Impact: Difficult to debug issues in production; no visibility into silent failures.
+- Fix approach: Integrate Timber for logging and Firebase Crashlytics for error reporting.
 
 ## Known Bugs
 
-**None detected:**
-- Symptoms: N/A
-- Files: N/A
-- Trigger: N/A
-- Workaround: N/A
+**Navigation State Loss:**
+- Symptoms: The app may lose its current screen state or captured pages during configuration changes or process death because state is managed via `remember { mutableStateOf(...) }` in `MainActivity`.
+- Files: `app/src/main/java/com/t2h/ocr/MainActivity.kt`
+- Trigger: Device rotation or background process death.
+- Workaround: Use `rememberSaveable` or move state to a `SavedStateHandle` in a `ViewModel`.
 
 ## Security Considerations
 
-**Firebase Configuration:**
-- Risk: `google-services.json` is present in the repository. While this file is generally required for the app to function and doesn't contain "secrets" in the traditional sense, it does identify the project and can be used to interact with Firebase services if they are not properly restricted via Firebase Console rules.
-- Files: `app/google-services.json`
-- Current mitigation: None detected.
-- Recommendations: Ensure Firebase Security Rules (Firestore, Storage) and App Check are configured to prevent unauthorized access.
+**File Permission Sandboxing:**
+- Risk: While using internal storage (`filesDir`, `cacheDir`), sensitive scanned documents are stored as plain files.
+- Files: `app/src/main/java/com/t2h/ocr/data/local/JsonStorage.kt`, `app/src/main/java/com/t2h/ocr/domain/ocr/PdfGenerator.kt`
+- Current mitigation: Internal storage is private to the app.
+- Recommendations: Consider EncryptedSharedPreferences for settings and Biometric prompt for accessing the history if privacy requirements increase.
 
 ## Performance Bottlenecks
 
-**None detected:**
-- Problem: The current codebase is minimal and has no heavy processing.
-- Files: N/A
-- Cause: N/A
-- Improvement path: Monitor OCR processing time once ML Kit is implemented.
+**O(N) Storage Operations:**
+- Problem: `JsonStorage` scales poorly. Adding or deleting a scan becomes slower as the history grows.
+- Files: `app/src/main/java/com/t2h/ocr/data/local/JsonStorage.kt`
+- Cause: Entire JSON list is serialized/deserialized for every change.
+- Improvement path: Migrate to Room.
+
+**In-Memory PDF Generation:**
+- Problem: `PdfDocument` builds the entire document in memory.
+- Files: `app/src/main/java/com/t2h/ocr/domain/ocr/PdfGenerator.kt`
+- Cause: Native Android `PdfDocument` API does not support streaming pages to disk incrementally.
+- Improvement path: For multi-page or high-res document support, consider a streaming PDF library or careful memory monitoring.
 
 ## Fragile Areas
 
-**MainActivity.kt:**
-- Files: `app/src/main/java/com/t2h/ocr/MainActivity.kt`
-- Why fragile: It is currently the only entry point and logic container. It is at risk of becoming a "God Object."
-- Safe modification: Refactor logic into separate components before adding more functionality.
-- Test coverage: 0% real coverage.
+**DocumentAnalyzer Pipeline:**
+- Files: `app/src/main/java/com/t2h/ocr/domain/ocr/DocumentAnalyzer.kt`
+- Why fragile: Tight timing requirements and manual `Mat` lifecycle. If the camera sends frames faster than processing, or if `release()` isn't called, it crashes or leaks.
+- Safe modification: Ensure `ImageProxy.close()` is always called in `finally` and `Mat.use {}` is used for temporary matrices.
+- Test coverage: Low. Difficult to test without real camera frames.
 
 ## Scaling Limits
 
-**Local Storage:**
-- Current capacity: No local database (e.g., Room) is implemented.
-- Limit: All data depends on Firebase or memory.
-- Scaling path: Implement Room persistence if offline support or caching is needed.
+**History Size:**
+- Current capacity: Limited by internal storage and JSON parsing speed.
+- Limit: ~1000 items before UI and storage lag becomes noticeable.
+- Scaling path: Room DB with pagination (Paging 3).
 
 ## Dependencies at Risk
 
-**ML Kit & Firebase Integration:**
-- Risk: The project depends on specific versions of ML Kit and Firebase without a clear abstraction layer.
-- Impact: Future updates to these SDKs might require extensive refactoring of UI-coupled code.
-- Migration plan: Create an interface for OCR services to decouple implementation details from the UI.
+**OpenCV Native Library:**
+- Risk: Native libraries increase APK size and complexity. Initialization can fail on certain architectures.
+- Impact: App might crash on startup if native libs fail to load.
+- Migration plan: Monitor crash reports for OpenCV init failures.
 
 ## Missing Critical Features
 
-**OCR Logic:**
-- Problem: No implementation of ML Kit `TextRecognition`.
-- Blocks: Core functionality of the app.
+**Dependency Injection:**
+- Problem: Manual instantiation of repositories and factories.
+- Blocks: Clean testing and decoupled components.
 
-**Camera and Gallery Integration:**
-- Problem: No UI or logic to capture images or select them from the gallery.
-- Blocks: User ability to provide input for OCR.
-
-**Authentication and Storage Implementation:**
-- Problem: Firebase dependencies are added but not used.
-- Blocks: Saving results or syncing data across devices.
+**Robust Sync Recovery:**
+- Problem: `SyncWorker` handles Drive uploads but lacks advanced retry logic for partial failures (e.g., metadata synced but file upload failed).
+- Blocks: Reliable cloud synchronization.
 
 ## Test Coverage Gaps
 
-**Business Logic:**
-- What's not tested: There is no business logic to test.
-- Files: `app/src/main/java/com/t2h/ocr/MainActivity.kt`
-- Risk: New logic will likely be introduced without tests.
+**Image Processing Logic:**
+- What's not tested: `DocumentAnalyzer` contour detection and `ImageProcessor` warping logic.
+- Files: `app/src/main/java/com/t2h/ocr/domain/ocr/DocumentAnalyzer.kt`, `app/src/main/java/com/t2h/ocr/domain/ocr/ImageProcessor.kt`
+- Risk: Regression in document detection accuracy or image quality.
 - Priority: High
-
-**UI Testing:**
-- What's not tested: Compose UI components.
-- Files: `app/src/main/java/com/t2h/ocr/MainActivity.kt`
-- Risk: UI regressions as the app grows.
-- Priority: Medium
 
 ---
 
-*Concerns audit: 2025-01-24*
+*Concerns audit: 2025-05-14*

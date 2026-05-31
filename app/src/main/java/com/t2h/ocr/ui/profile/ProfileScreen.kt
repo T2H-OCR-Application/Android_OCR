@@ -1,18 +1,20 @@
 package com.t2h.ocr.ui.profile
 
-import android.app.Activity
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,10 +29,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 import com.t2h.ocr.R
 import com.t2h.ocr.data.auth.AuthRepository
 
@@ -38,68 +40,35 @@ import com.t2h.ocr.data.auth.AuthRepository
 @Composable
 fun ProfileScreen(
     authRepository: AuthRepository,
-    onNavigateBack: () -> Unit,
+    onNavigateBack: () -> Unit, // Giữ lại ở tham số đầu vào để tránh lỗi biên dịch hệ thống
     onNavigateToSettings: () -> Unit,
     onNavigateToHistory: () -> Unit = {},
     onNavigateToHome: () -> Unit = {},
-    onLogoutSuccess: () -> Unit = {}
+    onLogoutSuccess: () -> Unit = {}, // Callback định tuyến đá người dùng về trang Đăng nhập
+    onNavigateToScanner: () -> Unit = {} // Hỗ trợ nút chụp ảnh nhanh ở BottomBar
 ) {
     val context = LocalContext.current
     val currentUser by authRepository.currentUser.collectAsState(initial = FirebaseAuth.getInstance().currentUser)
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var currentTab by remember { mutableStateOf("Hồ sơ") }
 
-    // Trạng thái để ẩn/hiện hộp thoại xác nhận đăng xuất
+    // Khóa trạng thái Tab hiện tại luôn là "Hồ sơ" để nút luôn có màu vàng hổ phách
+    val currentTab = "Hồ sơ"
+
+    // Trạng thái điều khiển ẩn/hiện hộp thoại xác nhận đăng xuất
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     val accountLinkedMsg = stringResource(R.string.toast_account_linked)
     val linkFailedMsg = stringResource(R.string.toast_link_failed)
-    val googleFailedTokenMsg = stringResource(R.string.toast_google_failed_token)
-    val googleFailedStatusMsg = stringResource(R.string.toast_google_failed_status)
-    val googleFailedResultMsg = stringResource(R.string.toast_google_failed_result)
     val signInCancelledMsg = stringResource(R.string.toast_sign_in_cancelled)
+    val scope = rememberCoroutineScope()
+    val credentialManager = remember { CredentialManager.create(context) }
 
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-            try {
-                val account = task.getResult(ApiException::class.java)
-                val idToken = account?.idToken
-                if (idToken != null) {
-                    isLoading = true
-                    errorMessage = null
-                    authRepository.linkWithGoogle(idToken) { success ->
-                        isLoading = false
-                        if (success) {
-                            Toast.makeText(context, accountLinkedMsg, Toast.LENGTH_SHORT).show()
-                        } else {
-                            errorMessage = linkFailedMsg
-                        }
-                    }
-                } else {
-                    errorMessage = googleFailedTokenMsg
-                }
-            } catch (e: ApiException) {
-                Log.e("ProfileScreen", "Google sign in failed", e)
-                errorMessage = String.format(googleFailedStatusMsg, e.statusCode, e.message ?: "")
-            }
-        } else {
-            if (result.resultCode != Activity.RESULT_CANCELED) {
-                errorMessage = String.format(googleFailedResultMsg, result.resultCode)
-            } else {
-                Toast.makeText(context, signInCancelledMsg, Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    // ─── HỘP THOẠI XÁC NHẬN ĐĂNG XUẤT (DIALOG) ───
+    // ─── HỘP THOẠI XÁC NHẬN ĐĂNG XUẤT ───
     if (showLogoutDialog) {
         AlertDialog(
-            onDismissRequest = { showLogoutDialog = false }, // Bấm ra ngoài thì đóng dialog
-            containerColor = Color(0xFF252329), // Màu nền tối đồng bộ bento
+            onDismissRequest = { showLogoutDialog = false },
+            containerColor = Color(0xFF252329), // Nền Bento tối đồng bộ toàn app
             title = {
                 Text(
                     text = "Đăng xuất tài khoản",
@@ -117,27 +86,30 @@ fun ProfileScreen(
             },
             confirmButton = {
                 Button(
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)), // Nút đồng ý màu đỏ nguy hiểm
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)), // Màu đỏ cảnh báo nguy hiểm
                     shape = RoundedCornerShape(8.dp),
                     onClick = {
-                        showLogoutDialog = false // Đóng dialog trước
+                        showLogoutDialog = false // Đóng Dialog trước khi chuyển tiếp
 
-                        // Thực hiện Logic Đăng xuất
+                        // 1. Đăng xuất hoàn toàn khỏi Firebase Auth
                         FirebaseAuth.getInstance().signOut()
-                        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN).build()
-                        GoogleSignIn.getClient(context, gso).signOut()
+
+                        // 2. Clear Credential Manager state
+                        scope.launch {
+                            try { credentialManager.clearCredentialState(androidx.credentials.ClearCredentialStateRequest()) } catch (_: Exception) {}
+                        }
 
                         Toast.makeText(context, "Đã đăng xuất thành công", Toast.LENGTH_SHORT).show()
-                        onLogoutSuccess() // Callback đá về màn hình đăng nhập
+
+                        // 3. Kích hoạt callback điều hướng lọt về màn đăng nhập trong MainActivity
+                        onLogoutSuccess()
                     }
                 ) {
                     Text("Đăng xuất", color = Color.White, fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = { showLogoutDialog = false } // Bấm hủy thì chỉ đóng dialog
-                ) {
+                TextButton(onClick = { showLogoutDialog = false }) {
                     Text("Hủy", color = Color.Gray, fontWeight = FontWeight.Medium)
                 }
             }
@@ -155,15 +127,7 @@ fun ProfileScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                 },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = stringResource(R.string.common_back),
-                            tint = Color.White
-                        )
-                    }
-                },
+                // Đã xóa bỏ icon mũi tên quay lại tại đây để tránh xung đột trải nghiệm thanh TabBar chính dưới đáy
                 actions = {
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(
@@ -179,15 +143,15 @@ fun ProfileScreen(
         bottomBar = {
             ProfileBottomNavigation(
                 currentTab = currentTab,
-                onTabSelected = {
-                    currentTab = it
-                    when (it) {
+                onTabSelected = { tabName ->
+                    when (tabName) {
                         "Trang chủ" -> onNavigateToHome()
                         "Tệp" -> onNavigateToHistory()
                         "Công cụ" -> onNavigateToSettings()
+                        "Hồ sơ" -> { /* Đang ở chính màn này, không xử lý lại */ }
                     }
                 },
-                onCenterClick = { /* Xử lý quét nhanh */ }
+                onCenterClick = onNavigateToScanner
             )
         },
         containerColor = Color(0xFF1A1D24)
@@ -197,13 +161,13 @@ fun ProfileScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .background(Color(0xFF1A1D24))
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            // 1. KHỐI TIÊU ĐỀ: ẢNH LỚN Ở TRÊN, EMAIL/UID Ở DƯỚI ĐỔ DỌC
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Avatar Người dùng
             Box(
                 modifier = Modifier
                     .size(86.dp)
@@ -220,6 +184,7 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Hiển thị Email/Trạng thái ẩn danh
             Text(
                 text = currentUser?.email ?: if (currentUser?.isAnonymous == true) "Tài khoản ẩn danh" else "Đã liên kết hệ thống",
                 color = Color.White,
@@ -231,6 +196,7 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            // Hiển thị UID rút gọn
             Text(
                 text = stringResource(R.string.profile_uid, currentUser?.uid?.take(16) ?: ""),
                 color = Color.Gray,
@@ -245,7 +211,7 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // 2. KHỐI BENTO MENU CHỨC NĂNG
+            // ─── KHỐI BENTO MENU CHỨC NĂNG ───
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -278,17 +244,38 @@ fun ProfileScreen(
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = Color.White.copy(alpha = 0.06f))
 
-                    // KẾT NỐI VỚI GOOGLE
+                    // LIÊN KẾT TÀI KHOẢN GOOGLE
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable(enabled = currentUser?.isAnonymous == true && !isLoading) {
-                                val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                                    .requestIdToken(context.getString(R.string.default_web_client_id))
-                                    .requestEmail()
-                                    .build()
-                                val googleSignInClient = GoogleSignIn.getClient(context, gso)
-                                launcher.launch(googleSignInClient.signInIntent)
+                                scope.launch {
+                                    try {
+                                        isLoading = true
+                                        errorMessage = null
+                                        val request = GetCredentialRequest.Builder()
+                                            .addCredentialOption(
+                                                GetSignInWithGoogleOption.Builder(
+                                                    context.getString(R.string.default_web_client_id)
+                                                ).build()
+                                            )
+                                            .build()
+                                        val credResult = credentialManager.getCredential(context, request)
+                                        val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credResult.credential.data)
+                                        authRepository.linkWithGoogle(googleIdTokenCredential.idToken) { success ->
+                                            isLoading = false
+                                            if (success) Toast.makeText(context, accountLinkedMsg, Toast.LENGTH_SHORT).show()
+                                            else errorMessage = linkFailedMsg
+                                        }
+                                    } catch (e: GetCredentialCancellationException) {
+                                        isLoading = false
+                                        Toast.makeText(context, signInCancelledMsg, Toast.LENGTH_SHORT).show()
+                                    } catch (e: GetCredentialException) {
+                                        isLoading = false
+                                        Log.e("ProfileScreen", "Credential error", e)
+                                        errorMessage = "Sign-in failed: ${e.message}"
+                                    }
+                                }
                             }
                             .padding(horizontal = 16.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -341,16 +328,14 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 3. NÚT ĐĂNG XUẤT (Khi nhấn chỉ kích hoạt hiện Dialog lên)
+            // ─── NÚT KÍCH HOẠT ĐĂNG XUẤT MÀU ĐỎ MỜ TÌNH TẾ ───
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xFFEF4444).copy(alpha = 0.1f))
-                    .clickable {
-                        showLogoutDialog = true // 👈 Bật hộp thoại xác nhận lên đây bạn nhé!
-                    }
+                    .clickable { showLogoutDialog = true } // Nhấp để hiển thị AlertDialog
                     .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -377,7 +362,6 @@ fun ProfileScreen(
     }
 }
 
-// --- COMPONENT CON CHO TỪNG DÒNG MENU ---
 @Composable
 private fun ProfileMenuItem(
     iconRes: Int,
@@ -424,7 +408,6 @@ private fun ProfileMenuItem(
     }
 }
 
-// --- COMPONENT THANH ĐIỀU HƯỚNG DƯỚI (BOTTOM NAVIGATION) ---
 @Composable
 private fun ProfileBottomNavigation(
     currentTab: String,
@@ -464,6 +447,7 @@ private fun ProfileBottomNavigation(
                 onClick = { onTabSelected("Tệp") }
             )
 
+            // NÚT CHÍNH GIỮA (QUÉT NHANH CAMERA)
             Box(
                 modifier = Modifier
                     .size(54.dp)
@@ -513,7 +497,7 @@ private fun NavigationItem(
         Icon(
             painter = painterResource(id = iconRes),
             contentDescription = title,
-            tint = if (isSelected) Color(0xFFD4AF37) else Color.Gray,
+            tint = if (isSelected) Color(0xFFD4AF37) else Color.Gray, // Chuẩn màu vàng hổ phách thương hiệu
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))

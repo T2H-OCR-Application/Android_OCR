@@ -1,5 +1,8 @@
 package com.t2h.ocr.ui.scanner
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import android.util.Log
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -41,7 +44,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.t2h.ocr.R
+import com.t2h.ocr.domain.ocr.ImageProcessor
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.opencv.core.Point
 import java.io.File
 import java.io.FileOutputStream
@@ -57,6 +62,7 @@ fun ScannerScreen(
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
     val scannedPages by viewModel.scannedPages.collectAsState()
     val errorState by viewModel.errorState.collectAsState()
 
@@ -67,6 +73,22 @@ fun ScannerScreen(
     val mainExecutor = remember(context) { ContextCompat.getMainExecutor(context) }
 
     val imageCapture = remember { ImageCapture.Builder().build() }
+
+    val pickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                try {
+                    val path = ImageProcessor.copyUriToCache(context, uri)
+                    val corners = ImageProcessor.detectCornersInFile(path)
+                    onDocumentCaptured(path, corners)
+                } catch (e: Exception) {
+                    Log.e("ScannerScreen", "Gallery Import FAILED", e)
+                }
+            }
+        }
+    }
 
     // Đồng bộ luồng liên kết Camera với vòng đời giao diện
     LaunchedEffect(previewView) {
@@ -229,8 +251,27 @@ fun ScannerScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Nút Nhập từ Thư viện (Import)
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFF252329).copy(alpha = 0.8f))
+                            .clickable {
+                                pickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.tabler_photo_plus),
+                            contentDescription = "Nhập từ thư viện",
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
 
-                    Spacer(modifier = Modifier.size(56.dp))
                     Box(
                         modifier = Modifier
                             .size(76.dp)

@@ -8,7 +8,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,9 +19,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -26,34 +32,60 @@ import coil.compose.rememberAsyncImagePainter
 import com.t2h.ocr.R
 import java.io.File
 
-// Model dữ liệu mẫu phù hợp với cấu trúc OCR của bạn
+// Model dữ liệu mẫu phù hợp với cấu trúc OCR
 data class HistoryItemData(
     val id: String,
     val title: String,
     val timeString: String, // Ví dụ: "Hôm qua", "2 giờ trước"
-    val imagePath: String? = null
+    val imagePath: String? = null,
+    val timestamp: Long = 0L,
+    val ocrText: String = ""
 )
 
 @Composable
 fun HistoryScreen(
-    historyList: List<HistoryItemData> = emptyList(), // Truyền danh sách từ ViewModel vào đây
+    historyList: List<HistoryItemData> = emptyList(),
     onItemClick: (HistoryItemData) -> Unit = {},
     onEditItemClick: (HistoryItemData) -> Unit = {},
-    onNavigateToSection: (String) -> Unit = {},
+    onDeleteItemClick: (HistoryItemData) -> Unit = {},
+    onNavigateToSection: (String) -> Unit = {}, // Callback điều hướng lọt về MainActivity
     onCenterFabClick: () -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var currentTab by remember { mutableStateOf("Trang chủ") }
+
+    // ─── ĐÃ SỬA: Đổi từ "Tệp" sang "Trang chủ" để icon Trang chủ sáng màu vàng chuẩn ───
+    val currentTab = "Trang chủ"
+
+    // Tự động lọc danh sách dựa trên những gì người dùng gõ vào ô Tìm kiếm
+    val filteredHistory = remember(searchQuery, historyList) {
+        if (searchQuery.isBlank()) {
+            historyList
+        } else {
+            historyList.filter {
+                it.title.contains(searchQuery, ignoreCase = true) ||
+                        it.timeString.contains(searchQuery, ignoreCase = true) ||
+                        it.ocrText.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
 
     Scaffold(
         bottomBar = {
             HistoryBottomNavigation(
                 currentTab = currentTab,
-                onTabSelected = { currentTab = it },
-                onCenterClick = onCenterFabClick
+                onTabSelected = { tabName ->
+                    // ─── ĐÃ SỬA: Đồng bộ lại các nhánh click chuyển hướng ───
+                    when (tabName) {
+                        "Trang chủ" -> { /* Đang thuộc nhánh xem tiếp từ Trang chủ, không chạy lại */ }
+                        "Tệp" -> onNavigateToSection("Tệp")
+                        "Công cụ" -> onNavigateToSection("Công cụ")
+                        "Hồ sơ" -> onNavigateToSection("Hồ sơ")
+                    }
+                },
+                onCenterClick = onCenterFabClick // Nhấn nút giữa mở máy ảnh quét nhanh
             )
         },
-        containerColor = Color(0xFF1A1D24) // Nền tối ngoài cùng hệ thống
+        containerColor = Color(0xFF1A1D24)
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -61,7 +93,8 @@ fun HistoryScreen(
                 .fillMaxSize()
                 .background(Color(0xFF1A1D24))
         ) {
-            // 1. THANH TÌM KIẾM (SEARCH BAR)
+
+            // ─── 1. THANH TÌM KIẾM ĐÃ ĐƯỢC KÍCH HOẠT ĐỂ GÕ CHỮ ───
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -76,12 +109,22 @@ fun HistoryScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "Tìm kiếm ....",
-                        color = Color.Gray.copy(alpha = 0.7f),
-                        fontSize = 14.sp,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (searchQuery.isEmpty()) {
+                            Text(
+                                text = "Tìm kiếm kết quả OCR...",
+                                color = Color.Gray.copy(alpha = 0.6f),
+                                fontSize = 14.sp
+                            )
+                        }
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            textStyle = TextStyle(color = Color.White, fontSize = 14.sp),
+                            cursorBrush = SolidColor(Color(0xFF14B8A6)),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search Icon",
@@ -91,7 +134,7 @@ fun HistoryScreen(
                 }
             }
 
-            // 2. VÙNG KHUNG CHỨA DANH SÁCH "GẦN ĐÂY" ĐỔ DỌC
+            // ─── 2. VÙNG KHUNG CHỨA DANH SÁCH KHỐI BENTO ───
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -101,7 +144,8 @@ fun HistoryScreen(
                     .background(Color(0xFF252329))
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Header Gần đây
+
+                    // Header tiêu đề vùng
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -109,28 +153,45 @@ fun HistoryScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clickable { onNavigateToSection("Trang chủ") }
+                        )
                         Text(
-                            text = "Gần Đây",
+                            text = if (searchQuery.isBlank()) "Gần Đây" else "Kết quả tìm kiếm (${filteredHistory.size})",
                             color = Color.White,
                             fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.Center
                         )
-                        Text(
-                            text = "Xem tất cả",
-                            color = Color.Gray,
-                            fontSize = 12.sp,
-                            modifier = Modifier.clickable { onNavigateToSection("Xem tất cả") }
-                        )
+                        if (searchQuery.isBlank()) {
+                            Text(
+                                text = "Xem tất cả",
+                                color = Color.Gray,
+                                fontSize = 12.sp,
+                                modifier = Modifier.clickable { onNavigateToSection("Xem tất cả") }
+                            )
+                        } else {
+                            Box(modifier = Modifier.width(60.dp))
+                        }
                     }
 
-                    // Danh sách cuộn mượt bằng LazyColumn
-                    if (historyList.isEmpty()) {
-                        // Trạng thái dự phòng nếu danh sách trống dữ liệu
+                    // Danh sách cuộn LazyColumn
+                    if (filteredHistory.isEmpty()) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(text = "Không có dữ liệu gần đây", color = Color.Gray, fontSize = 14.sp)
+                            Text(
+                                text = if (searchQuery.isBlank()) "Không có dữ liệu gần đây" else "Không tìm thấy kết quả phù hợp",
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
                         }
                     } else {
                         LazyColumn(
@@ -138,11 +199,12 @@ fun HistoryScreen(
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(historyList, key = { it.id }) { item ->
+                            items(filteredHistory, key = { it.id }) { item ->
                                 HistoryRowItem(
                                     item = item,
                                     onClick = { onItemClick(item) },
-                                    onEditClick = { onEditItemClick(item) }
+                                    onEditClick = { onEditItemClick(item) },
+                                    onDeleteClick = { onDeleteItemClick(item) }
                                 )
                             }
                         }
@@ -153,19 +215,19 @@ fun HistoryScreen(
     }
 }
 
-// --- COMPONENT CON CHO MỖI DÒNG LỊCH SỬ QUÉT ---
 @Composable
 private fun HistoryRowItem(
     item: HistoryItemData,
     onClick: () -> Unit,
-    onEditClick: () -> Unit
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(76.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF1E293B)) // Nền xanh đen tối của thẻ item theo ảnh mẫu
+            .background(Color(0xFF1E293B))
             .clickable { onClick() }
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -181,7 +243,6 @@ private fun HistoryRowItem(
                 contentScale = ContentScale.Crop
             )
         } else {
-            // Nếu không có ảnh -> Hiển thị ô vuông màu trắng nhạt chuẩn theo yêu cầu của bạn
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -192,14 +253,12 @@ private fun HistoryRowItem(
 
         Spacer(modifier = Modifier.width(14.dp))
 
-        // Cột chứa thông tin văn bản tiêu đề và thời gian
         Column(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.Center
         ) {
-            // Hàng tiêu đề + Nút sửa đổi nhỏ bên cạnh
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -214,9 +273,10 @@ private fun HistoryRowItem(
                     modifier = Modifier.weight(1f, fill = false)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                // Icon chỉnh sửa nhỏ cạnh tiêu đề (Giống hình cái bảng viết vẽ trong ảnh của bạn)
+
+                // Icon Chỉnh sửa
                 Icon(
-                    painter = painterResource(id = R.drawable.codicon_new_file), // Hoặc map icon edit tùy ý trong drawable của bạn
+                    painter = painterResource(id = R.drawable.codicon_new_file),
                     contentDescription = "Edit title",
                     tint = Color.LightGray.copy(alpha = 0.6f),
                     modifier = Modifier
@@ -227,14 +287,13 @@ private fun HistoryRowItem(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Hàng hiển thị thời gian quét kèm icon đồng hồ
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.tabler_photo_plus), // Dùng icon thời gian/đồng hồ phù hợp
+                    painter = painterResource(id = R.drawable.material_symbols_border_all_rounded),
                     contentDescription = "Time icon",
-                    tint = Color(0xFF3B82F6), // Màu xanh lam dịu nhẹ đổ bóng icon thời gian theo mẫu
+                    tint = Color(0xFF3B82F6),
                     modifier = Modifier.size(14.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
@@ -245,10 +304,18 @@ private fun HistoryRowItem(
                 )
             }
         }
+
+        IconButton(onClick = onDeleteClick) {
+            Icon(
+                imageVector = Icons.Default.DeleteOutline,
+                contentDescription = "Delete",
+                tint = Color.Gray.copy(alpha = 0.6f),
+                modifier = Modifier.size(18.dp)
+            )
+        }
     }
 }
 
-// --- COMPONENT THANH ĐIỀU HƯỚNG DƯỚI (BOTTOM NAVIGATION) ---
 @Composable
 private fun HistoryBottomNavigation(
     currentTab: String,
@@ -288,7 +355,7 @@ private fun HistoryBottomNavigation(
                 onClick = { onTabSelected("Tệp") }
             )
 
-            // NÚT CHÍNH GIỮA TRÒN XANH NGỌC CÓ ICON THÊM ẢNH (+)
+            // NÚT CHÍNH GIỮA TRÒN XANH NGỌC MỞ CAMERA QUÉT NHANH
             Box(
                 modifier = Modifier
                     .size(54.dp)

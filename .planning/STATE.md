@@ -4,6 +4,7 @@
 ## Status: Phase 4 Complete. All milestones and UAT criteria achieved.
 
 ## Recent Milestones
+- [x] Quick Task: Gallery Image Selection (REQ-1.1.3) completed.
 - [x] Phase 4, Plan 01: Testing Suite & Quality Gates completed.
 - [x] Phase 4, Plan 02: Performance & Memory Hardening completed.
 - [x] Phase 4, Plan 03: Resilience & Observability completed.
@@ -11,6 +12,9 @@
 - [x] Phase 4 UAT: All 11 criteria verified and passed.
 
 ## Key Decisions
+- **Photo Picker:** Adopted modern `PickVisualMedia` for a permissionless, high-security gallery import flow.
+- **Cache Isolation:** All imported gallery images are copied to `cacheDir` with unique UUIDs to ensure OpenCV compatibility and data privacy.
+- **Unified Analysis:** Refactored `DocumentAnalyzer` logic into `DetectionUtils` to enable automatic document detection for both live camera frames and static gallery imports.
 - **OCR Engine:** Google ML Kit (On-device) for speed and cost-effectiveness.
 - **Sync Strategy:** Direct Google Drive API upload for PDFs to avoid Firebase billing constraints, with metadata in Firestore.
 - **PDF API:** Native Android `PdfDocument` for a lightweight, searchable solution.

@@ -1,79 +1,101 @@
 # Coding Conventions
 
-**Analysis Date:** 2025-01-24
+**Analysis Date:** 2026-05-31
 
 ## Naming Patterns
 
 **Files:**
-- Kotlin files use PascalCase: `MainActivity.kt`, `Theme.kt`, `Color.kt`.
+- Kotlin source files: PascalCase (e.g., `MainActivity.kt`, `HomeViewModel.kt`).
+- Layout files (if any): snake_case (e.g., `activity_main.xml`).
+- Resource files: snake_case (e.g., `ic_launcher_background.xml`).
 
 **Functions:**
-- Composable functions use PascalCase: `Greeting`, `FrontendAndroidOCRTheme`.
-- Standard functions use camelCase: `onCreate`.
+- Standard functions: camelCase (e.g., `processAndOcr()`, `formatRelativeTime()`).
+- Composable functions: PascalCase (e.g., `HomeScreen()`, `ResultsScreen()`).
 
 **Variables:**
-- Local variables and parameters use camelCase: `savedInstanceState`, `innerPadding`, `darkTheme`.
-- Constants (top-level private) use PascalCase in theme files: `DarkColorScheme`, `LightColorScheme`, `Typography`.
+- Local variables and properties: camelCase (e.g., `authRepository`, `currentScreen`, `isProcessing`).
+- Constants: SCREAMING_SNAKE_CASE (e.g., `SYNC_WIFI_ONLY`).
 
 **Types:**
-- Classes and Interfaces use PascalCase: `MainActivity`.
+- Classes and Interfaces: PascalCase (e.g., `MainActivity`, `AuthRepository`).
+- Sealed classes and objects: PascalCase (e.g., `Screen`, `PdfGenerator`).
+- Enums: PascalCase (e.g., `SyncStatus`).
 
 ## Code Style
 
 **Formatting:**
-- Follows standard Kotlin coding conventions (JetBrains/Google style).
-- Uses 4 spaces for indentation.
+- Kotlin official code style: `kotlin.code.style=official` in `gradle.properties`.
+- Indentation: 4 spaces.
 
 **Linting:**
-- No explicit linting configuration (like `detekt` or `ktlint`) detected in the project root or app module.
-- Relies on default Android Studio / Kotlin IDE inspections.
+- Default Android Studio inspections.
+- Compose-specific inspections enabled in `.idea/inspectionProfiles/Project_Default.xml`.
 
 ## Import Organization
 
 **Order:**
-1. Standard library imports (e.g., `android.*`)
-2. Framework imports (e.g., `androidx.*`)
-3. Project-specific imports (e.g., `com.t2h.ocr.*`)
+1. Android/AndroidX imports.
+2. Google/Third-party libraries.
+3. Project-specific imports (`com.t2h.ocr.*`).
+4. Kotlin/Java standard libraries.
 
 **Path Aliases:**
-- Not detected.
+- Not observed. Standard package imports are used.
 
 ## Error Handling
 
 **Patterns:**
-- Standard Kotlin try-catch usage (none observed in scaffold code).
-- Compose-specific state handling for UI errors.
+- `try-catch` blocks are used for operations that might fail (I/O, network, OCR).
+- `e.printStackTrace()` or `Log.e()` for logging errors.
+- Examples:
+  - `app/src/main/java/com/t2h/ocr/MainActivity.kt`: `try { File(imagePath).delete() } catch (e: Exception) {}`
+  - `app/src/main/java/com/t2h/ocr/data/local/UserPreferences.kt`: `try { ... } catch (e: Exception) { e.printStackTrace() }`
 
 ## Logging
 
-**Framework:** `android.util.Log` (standard Android logging).
+**Framework:** `android.util.Log`
 
 **Patterns:**
-- Not explicitly used in the entry point `MainActivity.kt`.
+- `Log.d` for debug information (e.g., initialization success).
+- `Log.e` for errors (e.g., initialization failure).
+- Tagging: Usually uses the class name as the tag.
 
 ## Comments
 
 **When to Comment:**
-- Minimal commenting in scaffolded code.
-- KDoc style for classes/complex methods (observed in `ExampleUnitTest.kt`).
+- Classes and major functions should have KDoc descriptions.
+- Complex logic steps (e.g., OCR processing, PDF generation) are commented inline.
 
 **JSDoc/TSDoc:**
-- N/A (Project is Kotlin-based).
+- KDoc is used for Kotlin files.
+- Example: `app/src/main/java/com/t2h/ocr/domain/ocr/PdfGenerator.kt`
+  ```kotlin
+  /**
+   * Generates PDFs from OCR results.
+   */
+  object PdfGenerator { ... }
+  ```
 
 ## Function Design
 
-**Size:** Standard small functions (e.g., `Greeting`).
+**Size:** Functions are generally concise, but some lifecycle or setup methods in Activities/Composables can be larger.
 
-**Parameters:** Uses named parameters where clarity is needed, common in Compose.
+**Parameters:** Standard parameter passing. Use of default values where appropriate.
 
-**Return Values:** Usually `Unit` for Composables.
+**Return Values:** Standard return values or `Pair`/`Triple` for multiple values in internal methods.
 
 ## Module Design
 
-**Exports:** Standard Kotlin visibility (default is public).
+**Exports:** Public classes and functions are exported normally.
 
-**Barrel Files:** Not used (Kotlin uses package-level imports).
+**Barrel Files:** Not applicable in Kotlin/Android. Package structure is used for organization.
+
+**Design Patterns:**
+- **MVVM**: ViewModels (`HomeViewModel`, `ScannerViewModel`) handle UI state and logic.
+- **Repository Pattern**: Data access is abstracted through repositories (`AuthRepository`, `ScanRepository`).
+- **Singleton**: Observed in `ScanRepository.getInstance(context)` and `object` declarations like `PdfGenerator`.
 
 ---
 
-*Convention analysis: 2025-01-24*
+*Convention analysis: 2026-05-31*

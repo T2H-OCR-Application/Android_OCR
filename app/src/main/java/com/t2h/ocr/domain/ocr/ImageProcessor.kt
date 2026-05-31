@@ -1,8 +1,13 @@
 package com.t2h.ocr.domain.ocr
 
+import android.content.Context
+import android.net.Uri
 import org.opencv.core.*
+import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import org.opencv.utils.Converters
+import java.io.File
+import java.util.UUID
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sqrt
@@ -12,6 +17,37 @@ import kotlin.math.sqrt
  * Ensures native resources are released to prevent OOM.
  */
 object ImageProcessor {
+
+    /**
+     * Copies a Gallery Uri to a unique temp file in [context.cacheDir].
+     * Returns the absolute path of the cached file.
+     */
+    fun copyUriToCache(context: Context, uri: Uri): String {
+        val inputStream = context.contentResolver.openInputStream(uri) ?: throw Exception("Failed to open Uri")
+        val fileName = "gallery_${UUID.randomUUID()}.jpg"
+        val cacheFile = File(context.cacheDir, fileName)
+        
+        cacheFile.outputStream().use { outputStream ->
+            inputStream.use { it.copyTo(outputStream) }
+        }
+        
+        return cacheFile.absolutePath
+    }
+
+    /**
+     * Loads a file via [Imgcodecs.imread] and uses [DetectionUtils] to find corners.
+     */
+    fun detectCornersInFile(path: String): List<Point> {
+        val mat = Imgcodecs.imread(path, Imgcodecs.IMREAD_GRAYSCALE)
+        if (mat.empty()) {
+            mat.release()
+            return emptyList()
+        }
+        
+        val corners = DetectionUtils.detectDocument(mat)
+        mat.release()
+        return corners
+    }
 
     /**
      * Warps the perspective of the [input] Mat based on the [corners] provided.

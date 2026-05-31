@@ -12,17 +12,20 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.work.WorkManager
 import com.google.firebase.auth.FirebaseAuth
@@ -53,6 +56,7 @@ import com.t2h.ocr.ui.theme.AndroidOCRTheme
 import com.t2h.ocr.domain.observability.AnalyticsHelper
 import com.t2h.ocr.ui.home.HistoryItemData
 import com.t2h.ocr.ui.home.HistoryScreen
+import com.t2h.ocr.ui.fileP.FilesScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -63,16 +67,17 @@ import org.opencv.core.Mat
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.core.Point
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
-/**
- * Main entry point of the application. Manages high-level navigation between screens.
- */
 sealed class Screen {
     object Loading : Screen()
     object Login : Screen()
     object Home : Screen()
     object History : Screen()
+    object Files : Screen()
     object Permission : Screen()
     object Scanner : Screen()
     object Profile : Screen()
@@ -91,14 +96,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize OpenCV
         if (!OpenCVLoader.initDebug()) {
             Log.e("MainActivity", "OpenCV initialization failed.")
         } else {
             Log.d("MainActivity", "OpenCV initialized successfully.")
         }
 
-        // Initialize Firebase Auth anonymously
         authRepository = AuthRepository()
         authRepository.signInAnonymously()
 
@@ -115,27 +118,37 @@ class MainActivity : ComponentActivity() {
 
                     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
                     var isProcessing by remember { mutableStateOf(false) }
-                    
-                    // Core Data Layer
+
                     val scanRepository = remember { ScanRepository.getInstance(context) }
+                    val scans by scanRepository.scans.collectAsState(initial = emptyList())
+                    val recentHistory = remember(scans) {
+                        scans.sortedByDescending { it.timestamp }.map { scan ->
+                            HistoryItemData(
+                                id = scan.id,
+                                title = scan.title.ifBlank { "Tệp không tên" },
+                                timeString = formatRelativeTime(scan.timestamp),
+                                imagePath = scan.imagePath.ifBlank { null },
+                                timestamp = scan.timestamp,
+                                ocrText = scan.ocrText
+                            )
+                        }
+                    }
                     val workManager = remember { WorkManager.getInstance(context) }
 
                     val scannerViewModel: ScannerViewModel = viewModel()
                     val scannedPages by scannerViewModel.scannedPages.collectAsState()
 
                     val analyticsHelper = remember { AnalyticsHelper(context) }
-                    
+
                     LaunchedEffect(Unit) {
                         scannerViewModel.initAnalytics(analyticsHelper)
                         analyticsHelper.logUserInteraction("MainActivity", "app_start")
                     }
 
-                    // Initialize HomeViewModel
                     val homeViewModel: HomeViewModel = viewModel(
                         factory = HomeViewModelFactory(scanRepository, workManager)
                     )
 
-                    // Handle initial navigation and auth state
                     LaunchedEffect(currentUser) {
                         if (currentUser != null && currentScreen == Screen.Loading) {
                             currentScreen = Screen.Home
@@ -156,17 +169,78 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    val galleryPickerLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.PickVisualMedia()
+                    ) { uri ->
+                        if (uri != null) {
+                            scope.launch {
+                                try {
+                                    val path = ImageProcessor.copyUriToCache(context, uri)
+                                    val corners = ImageProcessor.detectCornersInFile(path)
+                                    currentScreen = Screen.Crop(path, corners)
+                                } catch (e: Exception) {
+                                    Log.e("MainActivity", "Gallery Import FAILED", e)
+                                }
+                            }
+                        }
+                    }
+
+                    val openScannerWithPermissionCheck = {
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                            currentScreen = Screen.Scanner
+                        } else {
+                            currentScreen = Screen.Permission
+                        }
+                    }
+
+                    // ─── ĐÃ SỬA: PHÂN TÁCH RÕ RÀNG INDEX ĐỂ TẠO HIỆU ỨNG ĐẨY TỪ PHẢI SANG TRÁI ───
+                    fun getScreenIndex(screen: Screen): Int = when (screen) {
+                        Screen.Home -> 0       // Gốc Trang chủ bên trái nhất
+                        Screen.History -> 1    // Nhấp "Xem tất cả" sẽ có index lớn hơn -> Đẩy từ phải sang trái chuẩn bài
+                        Screen.Files -> 2
+                        Screen.Settings -> 3
+                        Screen.Profile -> 4
+                        else -> -1
+                    }
+
                     AnimatedContent(
                         targetState = currentScreen,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFF1A1D24)),
                         transitionSpec = {
-                            if (targetState is Screen.Results || targetState is Screen.Crop || targetState is Screen.Gallery) {
-                                slideInHorizontally { it } + fadeIn() with
-                                        slideOutHorizontally { -it } + fadeOut()
-                            } else {
-                                slideInHorizontally { -it } + fadeIn() with
-                                        slideOutHorizontally { it } + fadeOut()
+                            val currentIndex = getScreenIndex(initialState)
+                            val targetIndex = getScreenIndex(targetState)
+
+                            val direction = when {
+                                targetIndex == -1 -> "forward"
+                                currentIndex == -1 -> "backward"
+                                targetIndex > currentIndex -> "forward" // Index lớn hơn -> dịch chuyển từ phải sang trái
+                                else -> "backward"
+                            }
+
+                            val animDuration = 350
+                            when (direction) {
+                                "forward" -> {
+                                    slideInHorizontally(
+                                        initialOffsetX = { it },
+                                        animationSpec = tween(animDuration)
+                                    ) with slideOutHorizontally(
+                                        targetOffsetX = { -it },
+                                        animationSpec = tween(animDuration)
+                                    )
+                                }
+                                else -> {
+                                    slideInHorizontally(
+                                        initialOffsetX = { -it },
+                                        animationSpec = tween(animDuration)
+                                    ) with slideOutHorizontally(
+                                        targetOffsetX = { it },
+                                        animationSpec = tween(animDuration)
+                                    )
+                                }
                             }.using(
-                                SizeTransform(clip = false)
+                                SizeTransform(clip = true)
                             )
                         }
                     ) { screen ->
@@ -186,70 +260,107 @@ class MainActivity : ComponentActivity() {
 
                             Screen.Home -> {
                                 HomeScreen(
+                                    recentHistory = recentHistory,
                                     onNavigateToSection = { sectionName ->
                                         when (sectionName) {
-                                            "Quét" -> {
-                                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                                                    currentScreen = Screen.Scanner
-                                                } else {
-                                                    currentScreen = Screen.Permission
-                                                }
+                                            "Quét" -> openScannerWithPermissionCheck()
+                                            "Ảnh" -> {
+                                                galleryPickerLauncher.launch(
+                                                    androidx.activity.result.PickVisualMediaRequest(
+                                                        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                                                    )
+                                                )
                                             }
-                                            "Tệp" -> currentScreen = Screen.History
+                                            "Tệp" -> currentScreen = Screen.Files
+                                            "Xem tất cả" -> currentScreen = Screen.History
                                             "Hồ sơ" -> currentScreen = Screen.Profile
                                             "Cài đặt", "Công cụ" -> currentScreen = Screen.Settings
                                         }
                                     },
-                                    onCenterFabClick = {
-                                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                                            currentScreen = Screen.Scanner
-                                        } else {
-                                            currentScreen = Screen.Permission
+                                    onCenterFabClick = openScannerWithPermissionCheck,
+                                    onRecentItemClick = { item ->
+                                        currentScreen = Screen.Results(
+                                            pages = listOf(item.ocrText),
+                                            imagePath = item.imagePath ?: "",
+                                            allImagePaths = item.imagePath?.let { listOf(it) } ?: emptyList()
+                                        )
+                                    },
+                                    onRecentItemDelete = { item ->
+                                        scope.launch(Dispatchers.IO) {
+                                            try {
+                                                if (!item.imagePath.isNullOrBlank()) File(item.imagePath).delete()
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                            }
+                                            scanRepository.deleteScan(item.id)
                                         }
                                     }
                                 )
                             }
 
                             Screen.History -> {
-                                val mockHistoryList = remember {
-                                    listOf(
-                                        HistoryItemData("1", "Ảnh thiên nhiên lúa bậc thang", "Hôm qua", null),
-                                        HistoryItemData("2", "Ảnh thiên nhiên lúa bậc thang", "Hôm qua", null),
-                                        HistoryItemData("3", "Ảnh thiên nhiên lúa bậc thang", "Hôm qua", null),
-                                        HistoryItemData(
-                                            "4",
-                                            "Ảnh thiên nhiên lúa bậc thang",
-                                            "Hôm qua",
-                                            null
-                                        )
-                                    )
-                                }
-
                                 HistoryScreen(
-                                    historyList = mockHistoryList,
+                                    historyList = recentHistory,
                                     onItemClick = { item ->
-                                        // Khi click vào item cụ thể, chuyển sang màn kết quả OCR hiển thị nội dung text
                                         currentScreen = Screen.Results(
-                                            pages = listOf(item.title),
+                                            pages = listOf(item.ocrText),
                                             imagePath = item.imagePath ?: "",
                                             allImagePaths = emptyList()
                                         )
                                     },
                                     onEditItemClick = { item ->
-                                        Log.d("Navigation", "Yêu cầu sửa đổi tiêu đề của item ID: ${item.id}")
+                                        Log.d("Navigation", "Sửa đổi item: ${item.id}")
+                                    },
+                                    onDeleteItemClick = { item ->
+                                        scope.launch(Dispatchers.IO) {
+                                            try {
+                                                if (!item.imagePath.isNullOrBlank()) File(item.imagePath).delete()
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                            }
+                                            scanRepository.deleteScan(item.id)
+                                        }
                                     },
                                     onNavigateToSection = { sectionName ->
                                         when (sectionName) {
                                             "Trang chủ" -> currentScreen = Screen.Home
+                                            "Tệp" -> currentScreen = Screen.Files
                                             "Hồ sơ" -> currentScreen = Screen.Profile
-                                            "Công cụ" -> currentScreen = Screen.Settings
+                                            "Công cụ", "Cài đặt" -> currentScreen = Screen.Settings
                                         }
                                     },
-                                    onCenterFabClick = {
-                                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                                            currentScreen = Screen.Scanner
-                                        } else {
-                                            currentScreen = Screen.Permission
+                                    onCenterFabClick = openScannerWithPermissionCheck
+                                )
+                            }
+
+                            Screen.Files -> {
+                                FilesScreen(
+                                    scanRepository = scanRepository,
+                                    onNavigateToSection = { sectionName ->
+                                        when (sectionName) {
+                                            "Trang chủ" -> currentScreen = Screen.Home
+                                            "Tệp" -> { /* Đang ở chính nó */ }
+                                            "Công cụ", "Cài đặt" -> currentScreen = Screen.Settings
+                                            "Hồ sơ" -> currentScreen = Screen.Profile
+                                        }
+                                    },
+                                    onCenterFabClick = openScannerWithPermissionCheck,
+                                    onOpenScan = { scan ->
+                                        currentScreen = Screen.Results(
+                                            pages = listOf(scan.ocrText),
+                                            imagePath = scan.imagePath,
+                                            allImagePaths = if (scan.imagePath.isNotBlank()) listOf(scan.imagePath) else emptyList()
+                                        )
+                                    },
+                                    onDeleteScan = { scan ->
+                                        scope.launch(Dispatchers.IO) {
+                                            try {
+                                                if (scan.imagePath.isNotBlank()) File(scan.imagePath).delete()
+                                                if (scan.pdfPath.isNotBlank()) File(scan.pdfPath).delete()
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                            }
+                                            scanRepository.deleteScan(scan.id)
                                         }
                                     }
                                 )
@@ -291,7 +402,10 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToSettings = { currentScreen = Screen.Settings },
                                     onNavigateToHistory = { currentScreen = Screen.History },
                                     onNavigateToHome = { currentScreen = Screen.Home },
-                                    onLogoutSuccess = { currentScreen = Screen.Login }
+                                    onLogoutSuccess = {
+                                        currentScreen = Screen.Login
+                                    },
+                                    onNavigateToScanner = openScannerWithPermissionCheck
                                 )
                             }
 
@@ -307,31 +421,26 @@ class MainActivity : ComponentActivity() {
                                 }
                                 com.t2h.ocr.ui.settings.SettingsScreen(
                                     viewModel = settingsViewModel,
-                                    onBack = {
-                                        currentScreen = Screen.Profile
-                                    }
+                                    onBack = { currentScreen = Screen.Profile },
+                                    onNavigateToHome = { currentScreen = Screen.Home },
+                                    onNavigateToHistory = { currentScreen = Screen.Files },
+                                    onNavigateToProfile = { currentScreen = Screen.Profile },
+                                    onNavigateToScanner = openScannerWithPermissionCheck
                                 )
                             }
 
                             Screen.Login -> {
                                 LoginScreen(
-                                    onNavigateToRegister = {
-                                        currentScreen = Screen.Register
-                                    },
-                                    onAuthSuccess = {
-                                        currentScreen = Screen.Home
-                                    }
+                                    authRepository = authRepository,
+                                    onNavigateToRegister = { currentScreen = Screen.Register },
+                                    onAuthSuccess = { currentScreen = Screen.Home }
                                 )
                             }
 
                             Screen.Register -> {
                                 RegisterScreen(
-                                    onNavigateToLogin = {
-                                        currentScreen = Screen.Login
-                                    },
-                                    onRegisterSuccess = {
-                                        currentScreen = Screen.Home
-                                    }
+                                    onNavigateToLogin = { currentScreen = Screen.Login },
+                                    onRegisterSuccess = { currentScreen = Screen.Home }
                                 )
                             }
 
@@ -348,9 +457,8 @@ class MainActivity : ComponentActivity() {
                                                 val latency = System.currentTimeMillis() - startTime
                                                 isProcessing = false
                                                 if (result != null) {
-                                                    // Cleanup source capture file
                                                     try { File(screen.imagePath).delete() } catch (e: Exception) {}
-                                                    
+
                                                     scannerViewModel.logOcrPerformance(latency, 1, "success")
                                                     scannerViewModel.addPage(ScannedPage(imagePath = result.second, text = result.first.text))
                                                     currentScreen = Screen.Gallery
@@ -364,7 +472,7 @@ class MainActivity : ComponentActivity() {
                                             currentScreen = Screen.Scanner
                                         }
                                     )
-                                    
+
                                     if (isProcessing) {
                                         Box(
                                             modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f)),
@@ -375,16 +483,12 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
-                            
+
                             Screen.Gallery -> {
                                 GalleryScreen(
                                     pages = scannedPages,
-                                    onAddMore = {
-                                        currentScreen = Screen.Scanner
-                                    },
-                                    onRemovePage = { id ->
-                                        scannerViewModel.removePage(id)
-                                    },
+                                    onAddMore = { currentScreen = Screen.Scanner },
+                                    onRemovePage = { id -> scannerViewModel.removePage(id) },
                                     onFinish = {
                                         currentScreen = Screen.Results(
                                             pages = scannedPages.map { it.text },
@@ -392,9 +496,7 @@ class MainActivity : ComponentActivity() {
                                             allImagePaths = scannedPages.map { it.imagePath }
                                         )
                                     },
-                                    onBackClick = {
-                                        currentScreen = Screen.Scanner
-                                    }
+                                    onBackClick = { currentScreen = Screen.Scanner }
                                 )
                             }
 
@@ -441,7 +543,7 @@ class MainActivity : ComponentActivity() {
 
             val warpedFile = File(cacheDir, "warped_${UUID.randomUUID()}.jpg")
             Imgcodecs.imwrite(warpedFile.absolutePath, warped)
-            
+
             val bitmap = android.graphics.BitmapFactory.decodeFile(warpedFile.absolutePath)
             warped.release()
 
@@ -449,7 +551,7 @@ class MainActivity : ComponentActivity() {
 
             val inputImage = InputImage.fromBitmap(bitmap, 0)
             val visionText = recognizer.process(inputImage).await()
-            
+
             visionText to warpedFile.absolutePath
         } catch (e: Exception) {
             e.printStackTrace()
@@ -460,5 +562,20 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         recognizer.close()
+    }
+}
+
+private fun formatRelativeTime(timestamp: Long): String {
+    if (timestamp <= 0L) return ""
+    val diff = System.currentTimeMillis() - timestamp
+    val minutes = diff / 60_000
+    val hours = diff / 3_600_000
+    val days = diff / 86_400_000
+    return when {
+        diff < 60_000 -> "Vừa xong"
+        diff < 3_600_000 -> "${minutes} phút trước"
+        diff < 86_400_000 -> "${hours} giờ trước"
+        diff < 172_800_000 -> "Hôm qua"
+        else -> SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(timestamp))
     }
 }

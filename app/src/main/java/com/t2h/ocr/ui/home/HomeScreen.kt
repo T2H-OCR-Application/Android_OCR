@@ -1,14 +1,18 @@
 package com.t2h.ocr.ui.home
 
 import android.util.Log
-import androidx.compose.foundation.BorderStroke // 👈 Đã thêm import chuẩn để sửa lỗi BoxStroke
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,26 +20,53 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.t2h.ocr.R
+import java.io.File
 
 @Composable
 fun HomeScreen(
     onNavigateToSection: (String) -> Unit = {},
-    onCenterFabClick: () -> Unit = {}
+    onCenterFabClick: () -> Unit = {},
+    recentHistory: List<HistoryItemData> = emptyList(),
+    onRecentItemClick: (HistoryItemData) -> Unit = {},
+    onRecentItemDelete: (HistoryItemData) -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var currentTab by remember { mutableStateOf("Trang chủ") }
+    val filteredRecent = remember(searchQuery, recentHistory) {
+        if (searchQuery.isBlank()) {
+            recentHistory
+        } else {
+            recentHistory.filter { item ->
+                item.title.contains(searchQuery, ignoreCase = true) ||
+                        item.timeString.contains(searchQuery, ignoreCase = true) ||
+                        item.ocrText.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
 
     Scaffold(
         bottomBar = {
             HomeBottomNavigation(
                 currentTab = currentTab,
-                onTabSelected = { currentTab = it },
+                onTabSelected = { tabName ->
+                    currentTab = tabName
+                    when (tabName) {
+                        "Tệp" -> onNavigateToSection("Tệp")
+                        "Công cụ" -> onNavigateToSection("Công cụ")
+                        "Hồ sơ" -> onNavigateToSection("Hồ sơ")
+                    }
+                },
                 onCenterClick = onCenterFabClick
             )
         },
@@ -62,12 +93,22 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "Tìm kiếm ....",
-                        color = Color.Gray.copy(alpha = 0.7f),
-                        fontSize = 14.sp,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (searchQuery.isEmpty()) {
+                            Text(
+                                text = "Tìm kiếm ....",
+                                color = Color.Gray.copy(alpha = 0.7f),
+                                fontSize = 14.sp
+                            )
+                        }
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            textStyle = TextStyle(color = Color.White, fontSize = 14.sp),
+                            cursorBrush = SolidColor(Color(0xFF14B8A6)),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search Icon",
@@ -106,7 +147,13 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(28.dp)
             ) {
                 categories.drop(4).forEach { category ->
-                    CategoryButton(category = category, onClick = { onNavigateToSection(category.title) })
+                    CategoryButton(
+                        category = category,
+                        onClick = {
+                            if (category.title == "Tất cả") onNavigateToSection("Tệp")
+                            else onNavigateToSection(category.title)
+                        }
+                    )
                 }
             }
 
@@ -142,44 +189,62 @@ fun HomeScreen(
                             text = "Xem tất cả",
                             color = Color.Gray,
                             fontSize = 12.sp,
-                            modifier = Modifier.clickable { onNavigateToSection("Xem tất cả") }
+                            modifier = Modifier.clickable {
+                                onNavigateToSection("Xem tất cả") // Chuyển sang danh sách lịch sử đầy đủ
+                            }
                         )
                     }
 
-                    // Trạng thái trống (Không có dữ liệu)
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.bi_file_text),
-                            contentDescription = "No Data",
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Không có dữ liệu",
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // ĐÃ SỬA: Thay đổi BoxStroke thành BorderStroke và dọn sạch padding lỗi
-                        Surface(
-                            onClick = { /* Xử lý thêm dữ liệu */ },
-                            color = Color.Transparent,
-                            shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, Color(0xFF14B8A6))
+                    if (filteredRecent.isEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Text(
-                                text = "Thêm dữ liệu",
-                                color = Color(0xFF14B8A6),
-                                fontSize = 14.sp,
-                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                            Image(
+                                painter = painterResource(id = R.drawable.bi_file_text),
+                                contentDescription = "No Data",
+                                modifier = Modifier.size(64.dp)
                             )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = if (searchQuery.isBlank()) "Không có dữ liệu" else "Không tìm thấy kết quả phù hợp",
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Surface(
+                                onClick = { onCenterFabClick() },
+                                color = Color.Transparent,
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, Color(0xFF14B8A6))
+                            ) {
+                                Text(
+                                    text = "Thêm dữ liệu",
+                                    color = Color(0xFF14B8A6),
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentPadding = PaddingValues(vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(filteredRecent.take(4), key = { it.id }) { item ->
+                                RecentHistoryItem(
+                                    item = item,
+                                    onClick = { onRecentItemClick(item) },
+                                    onDeleteClick = { onRecentItemDelete(item) }
+                                )
+                            }
                         }
                     }
                 }
@@ -226,7 +291,81 @@ private fun CategoryButton(
     }
 }
 
-// --- COMPONENT THANH ĐIỀU HƯỚNG DƯỚI (BOTTOM NAVIGATION) TRÀN CẠNH ---
+@Composable
+private fun RecentHistoryItem(
+    item: HistoryItemData,
+    onClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF1E293B))
+            .clickable { onClick() }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color.White.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (!item.imagePath.isNullOrBlank()) {
+                Image(
+                    painter = rememberAsyncImagePainter(File(item.imagePath)),
+                    contentDescription = item.title,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(10.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.bi_file_text),
+                    contentDescription = item.title,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = item.title,
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = item.timeString,
+                color = Color.Gray,
+                fontSize = 12.sp
+            )
+        }
+
+        IconButton(onClick = onDeleteClick) {
+            Icon(
+                imageVector = Icons.Default.DeleteOutline,
+                contentDescription = "Delete recent item",
+                tint = Color.Gray.copy(alpha = 0.6f),
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+// --- COMPONENT THANH ĐIỀU HƯỚNG DƯỚI TRÀN CẠNH ---
 @Composable
 private fun HomeBottomNavigation(
     currentTab: String,
@@ -266,7 +405,7 @@ private fun HomeBottomNavigation(
                 onClick = { onTabSelected("Tệp") }
             )
 
-            // NÚT CHÍNH GIỮA NỔI BẬT
+            // NÚT CHÍNH GIỮA NỔI BẬT (CAMERA ACTION) - Giữ màu xanh ngọc thương hiệu
             Box(
                 modifier = Modifier
                     .size(54.dp)
@@ -276,7 +415,7 @@ private fun HomeBottomNavigation(
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.tabler_photo_plus), // Dùng icon add file làm nút trung tâm
+                    painter = painterResource(id = R.drawable.tabler_photo_plus),
                     contentDescription = "Center Action",
                     modifier = Modifier.size(24.dp)
                 )
@@ -316,12 +455,14 @@ private fun NavigationItem(
         Icon(
             painter = painterResource(id = iconRes),
             contentDescription = title,
+            // ─── ĐÃ KHÔI PHỤC: Trả lại màu vàng hổ phách (0xFFD4AF37) khi tab được chọn ───
             tint = if (isSelected) Color(0xFFD4AF37) else Color.Gray,
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = title,
+            // ─── ĐÃ KHÔI PHỤC: Trả lại màu chữ vàng khi active ───
             color = if (isSelected) Color(0xFFD4AF37) else Color.Gray,
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal

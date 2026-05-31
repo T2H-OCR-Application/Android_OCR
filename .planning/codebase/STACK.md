@@ -1,74 +1,77 @@
 # Technology Stack
 
-**Analysis Date:** 2025-01-24
+**Analysis Date:** 2025-02-14
 
 ## Languages
 
 **Primary:**
-- Kotlin 2.0.21 - Used for all Android application logic and UI components.
+- Kotlin 2.0.21 - Core application logic, UI, and background processing across all source files.
 
 **Secondary:**
-- Kotlin DSL - Used for Gradle build configuration files (`build.gradle.kts`, `settings.gradle.kts`).
-- XML - Used for Android Manifest, resources, and configuration (`AndroidManifest.xml`, `res/values/*.xml`).
+- SQL (SQLite) - Used via Room persistence library for local data storage.
 
 ## Runtime
 
 **Environment:**
-- Android SDK (Target 35, Compile 35, Min 24)
-- Java 11 (Target and Source compatibility)
+- Android SDK (minSdk 24, targetSdk 36)
+- Java 17 (JVM target)
 
 **Package Manager:**
-- Gradle 9.3.1
-- Lockfile: Not detected (using `libs.versions.toml` for version management).
+- Gradle (Kotlin DSL)
+- Version Catalog: `gradle/libs.versions.toml`
+- Lockfile: missing (standard for Android projects)
 
 ## Frameworks
 
 **Core:**
-- Jetpack Compose (BOM 2024.10.01) - Primary UI framework.
-- Material 3 - UI component library.
+- Jetpack Compose (BOM 2024.10.01) - Modern UI toolkit for building all screens.
+- Android Architecture Components (Lifecycle, ViewModel, Navigation-like sealed class pattern).
 
 **Testing:**
-- JUnit 4.13.2 - Unit testing.
-- AndroidX JUnit 1.2.1 - Instrumentation testing.
-- Espresso 3.6.1 - UI testing.
-- Compose UI Test - Testing Compose layouts.
+- JUnit 4 - Unit testing.
+- MockK - Mocking library for tests.
+- Robolectric - Android unit testing framework.
+- Roborazzi - Screenshot testing.
+- Turbine - Flow testing.
 
 **Build/Dev:**
-- Android Gradle Plugin (AGP) 8.7.3 - Build system.
-- Kotlin Compose Compiler (integrated in Kotlin 2.0.21).
+- Android Gradle Plugin 8.9.1 - Build system.
+- Kotlin Serialization Plugin - JSON parsing.
+- Kapt - Annotation processing for Room.
 
 ## Key Dependencies
 
 **Critical:**
-- `androidx.core:core-ktx:1.15.0` - Standard Android KTX libraries.
-- `androidx.activity:activity-compose:1.9.3` - Integration between Activity and Compose.
-- `androidx.lifecycle:lifecycle-runtime-ktx:2.8.7` - Lifecycle-aware components.
+- CameraX 1.4.0 - Camera implementation in `app/src/main/java/com/t2h/ocr/ui/scanner/ScannerScreen.kt`.
+- ML Kit Text Recognition 16.0.1 - OCR processing in `app/src/main/java/com/t2h/ocr/MainActivity.kt`.
+- OpenCV 4.5.3.0 - Image processing and document detection in `app/src/main/java/com/t2h/ocr/domain/ocr/DocumentAnalyzer.kt` and `app/src/main/java/com/t2h/ocr/domain/ocr/ImageProcessor.kt`.
+- Room 2.7.0 - Local database management.
 
 **Infrastructure:**
-- `com.google.mlkit:text-recognition:16.0.0` - On-device OCR capabilities.
-- `com.google.firebase:firebase-bom:33.7.0` - Firebase platform orchestration.
+- WorkManager 2.10.0 - Background synchronization in `app/src/main/java/com/t2h/ocr/data/sync/SyncWorker.kt`.
+- DataStore 1.1.1 - User preferences storage in `app/src/main/java/com/t2h/ocr/data/local/UserPreferences.kt`.
+- Coil 2.7.0 - Image loading for Compose.
 
 ## Configuration
 
 **Environment:**
-- `gradle.properties` - Gradle build properties.
-- `app/google-services.json` - Firebase configuration.
+- Configured via `google-services.json` for Firebase.
+- `gradle.properties` for build-wide settings.
 
 **Build:**
-- `build.gradle.kts` (root) - `C:\Users\testu\OneDrive\Máy tính\New folder (2)\Android_OCR\build.gradle.kts`
-- `app/build.gradle.kts` - `C:\Users\testu\OneDrive\Máy tính\New folder (2)\Android_OCR\app\build.gradle.kts`
-- `settings.gradle.kts` - `C:\Users\testu\OneDrive\Máy tính\New folder (2)\Android_OCR\settings.gradle.kts`
-- `gradle/libs.versions.toml` - `C:\Users\testu\OneDrive\Máy tính\New folder (2)\Android_OCR\gradle\libs.versions.toml`
+- `app/build.gradle.kts` - Main application module configuration.
+- `build.gradle.kts` - Root project configuration.
+- `gradle/libs.versions.toml` - Centralized dependency management.
 
 ## Platform Requirements
 
 **Development:**
 - Android Studio Ladybug or newer.
-- JDK 11+.
+- JDK 17.
 
 **Production:**
-- Android Device (API 24 or higher).
+- Android devices running Android 7.0 (API 24) or higher.
 
 ---
 
-*Stack analysis: 2025-01-24*
+*Stack analysis: 2025-02-14*
