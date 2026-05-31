@@ -1,9 +1,11 @@
 package com.t2h.ocr.data.sync
 
+import android.accounts.AccountManager
 import android.content.Context
 import android.content.Intent
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
+import com.google.firebase.auth.FirebaseAuth
 import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException
 import com.google.api.client.http.FileContent
 import com.google.api.client.http.javanet.NetHttpTransport
@@ -26,11 +28,27 @@ class DriveUploader(private val context: Context) {
     private val summaryFolderName = "Summaries"
 
     private fun buildDriveService(): Drive? {
-        val account = GoogleSignIn.getLastSignedInAccount(context) ?: return null
+        // Prefer legacy GoogleSignIn account; fall back to AccountManager lookup via
+        // Firebase Auth linked Google email (needed after Credential Manager migration).
+        val androidAccount: android.accounts.Account? =
+            GoogleSignIn.getLastSignedInAccount(context)?.account
+                ?: run {
+                    val email = FirebaseAuth.getInstance().currentUser
+                        ?.providerData
+                        ?.find { it.providerId == "google.com" }
+                        ?.email
+                    if (email != null)
+                        AccountManager.get(context)
+                            .getAccountsByType("com.google")
+                            .find { it.name.equals(email, ignoreCase = true) }
+                    else null
+                }
+        androidAccount ?: return null
+
         val credential = GoogleAccountCredential.usingOAuth2(
             context, listOf(DriveScopes.DRIVE_FILE)
         )
-        credential.selectedAccount = account.account ?: return null
+        credential.selectedAccount = androidAccount
         return Drive.Builder(
             NetHttpTransport(),
             GsonFactory.getDefaultInstance(),

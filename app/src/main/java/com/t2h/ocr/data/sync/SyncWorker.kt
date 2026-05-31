@@ -54,8 +54,10 @@ class SyncWorker(
         setForeground(createForegroundInfo(notificationId, builder))
 
         return try {
-            // 3. Check for Google account
-            if (GoogleSignIn.getLastSignedInAccount(applicationContext) == null) {
+            // 3. Check for linked Google account (works with both legacy GoogleSignIn and Credential Manager)
+            val hasGoogleAccount = GoogleSignIn.getLastSignedInAccount(applicationContext) != null ||
+                auth.currentUser?.providerData?.any { it.providerId == "google.com" } == true
+            if (!hasGoogleAccount) {
                 Log.e(TAG, "SyncWorker: [FAIL] No Google Account")
                 analyticsHelper.logSyncStatus(scanId, attemptCount, System.currentTimeMillis() - startTime, "no_google_account")
                 return Result.failure()
