@@ -9,62 +9,48 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_preferences")
 
-/**
- * Manages user preferences using Jetpack DataStore.
- * Stores resource management toggles.
- */
 class UserPreferences(private val context: Context) {
 
     companion object {
         val SYNC_WIFI_ONLY = booleanPreferencesKey("sync_wifi_only")
         val CLEAR_CACHE_ON_SYNC = booleanPreferencesKey("clear_cache_on_sync")
+        val GEMINI_API_KEY = stringPreferencesKey("gemini_api_key")
     }
 
-    /**
-     * Flow emitting the current 'Wi-Fi only sync' preference.
-     */
     val syncWifiOnly: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[SYNC_WIFI_ONLY] ?: true // Default to true
+        preferences[SYNC_WIFI_ONLY] ?: true
     }
 
-    /**
-     * Flow emitting the current 'Clear cache on sync' preference.
-     */
     val clearCacheOnSync: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[CLEAR_CACHE_ON_SYNC] ?: false // Default to false
+        preferences[CLEAR_CACHE_ON_SYNC] ?: false
     }
 
-    /**
-     * Updates the 'Wi-Fi only sync' preference.
-     */
+    val geminiApiKey: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[GEMINI_API_KEY] ?: ""
+    }
+
     suspend fun setSyncWifiOnly(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[SYNC_WIFI_ONLY] = enabled
         }
     }
 
-    /**
-     * Updates the 'Clear cache on sync' preference.
-     */
     suspend fun setClearCacheOnSync(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[CLEAR_CACHE_ON_SYNC] = enabled
         }
     }
 
-    /**
-     * Clears the application's internal files and cache directories.
-     */
+    suspend fun setGeminiApiKey(key: String) {
+        context.dataStore.edit { preferences ->
+            preferences[GEMINI_API_KEY] = key.trim()
+        }
+    }
+
     fun clearLocalCache(): Boolean {
         return try {
-            // Clear permanent files
-            context.filesDir.listFiles()?.forEach { file ->
-                file.deleteRecursively()
-            }
-            // Clear temporary cache
-            context.cacheDir.listFiles()?.forEach { file ->
-                file.deleteRecursively()
-            }
+            context.filesDir.listFiles()?.forEach { file -> file.deleteRecursively() }
+            context.cacheDir.listFiles()?.forEach { file -> file.deleteRecursively() }
             true
         } catch (e: Exception) {
             e.printStackTrace()

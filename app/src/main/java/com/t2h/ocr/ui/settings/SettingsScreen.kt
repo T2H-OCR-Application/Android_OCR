@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,9 +18,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.t2h.ocr.R
@@ -27,17 +33,21 @@ import com.t2h.ocr.R
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
-    onBack: () -> Unit, // Giữ ở tham số để tránh lỗi biên dịch ở MainActivity nếu chưa xóa
+    onBack: () -> Unit,
     onNavigateToHome: () -> Unit = {},
     onNavigateToHistory: () -> Unit = {},
     onNavigateToProfile: () -> Unit = {},
-    onNavigateToScanner: () -> Unit = {} // Callback mở camera chụp ảnh giống trang chủ
+    onNavigateToScanner: () -> Unit = {}
 ) {
     val syncWifiOnly by viewModel.syncWifiOnly.collectAsState()
     val clearCacheOnSync by viewModel.clearCacheOnSync.collectAsState()
+    val savedApiKey by viewModel.geminiApiKey.collectAsState()
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
 
-    // Cố định Tab hiện tại luôn là "Công cụ" để sáng đúng icon
+    var apiKeyInput by remember(savedApiKey) { mutableStateOf(savedApiKey) }
+    var showKey by remember { mutableStateOf(false) }
+
     val currentTab = "Công cụ"
 
     Scaffold(
@@ -51,7 +61,6 @@ fun SettingsScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                 },
-                // ─── ĐÃ XÓA HOÀN TOÀN KHỐI navigationIcon (MŨI TÊN) TẠI ĐÂY ───
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF1A1D24))
             )
         },
@@ -59,15 +68,13 @@ fun SettingsScreen(
             SettingsBottomNavigation(
                 currentTab = currentTab,
                 onTabSelected = { tabName ->
-                    // ─── ĐÃ SỬA: Chuyển đổi tab chuẩn xác ───
                     when (tabName) {
                         "Trang chủ" -> onNavigateToHome()
                         "Tệp" -> onNavigateToHistory()
-                        "Công cụ" -> { /* Đang ở chính nó, không xử lý lại */ }
+                        "Công cụ" -> {}
                         "Hồ sơ" -> onNavigateToProfile()
                     }
                 },
-                // ─── ĐÃ SỬA: Gán sự kiện mở Camera quét cho nút tròn giữa ───
                 onCenterClick = onNavigateToScanner
             )
         },
@@ -127,7 +134,91 @@ fun SettingsScreen(
                 }
             }
 
-            // ─── PHẦN 2: KHỐI BENTO CÀI ĐẶT HỆ THỐNG ───
+            // ─── PHẦN 2: GEMINI API KEY ───
+            Text(
+                text = "Cấu hình AI",
+                color = Color(0xFF14B8A6),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 4.dp)
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF252329))
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Gemini API Key",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Key được lưu trên thiết bị, không gửi đi đâu ngoài Gemini API",
+                        color = Color.Gray,
+                        fontSize = 11.sp
+                    )
+
+                    OutlinedTextField(
+                        value = apiKeyInput,
+                        onValueChange = { apiKeyInput = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = {
+                            Text("Nhập Gemini API Key...", color = Color.Gray, fontSize = 13.sp)
+                        },
+                        visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { showKey = !showKey }) {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (showKey) R.drawable.mingcute_user_4_line
+                                        else R.drawable.mingcute_document_line
+                                    ),
+                                    contentDescription = if (showKey) "Ẩn key" else "Hiện key",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF14B8A6),
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            cursorColor = Color(0xFF14B8A6),
+                            focusedContainerColor = Color(0xFF1A1D24),
+                            unfocusedContainerColor = Color(0xFF1A1D24)
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    Button(
+                        onClick = {
+                            if (apiKeyInput.isBlank()) {
+                                Toast.makeText(context, "Vui lòng nhập API Key", Toast.LENGTH_SHORT).show()
+                            } else {
+                                viewModel.saveGeminiApiKey(apiKeyInput)
+                                focusManager.clearFocus()
+                                Toast.makeText(context, "Đã lưu API Key", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF14B8A6)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Lưu API Key", color = Color.White, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+
+            // ─── PHẦN 3: KHỐI BENTO CÀI ĐẶT HỆ THỐNG ───
             Text(
                 text = stringResource(R.string.settings_resource_mgmt),
                 color = Color(0xFF14B8A6),
@@ -164,7 +255,7 @@ fun SettingsScreen(
                 }
             }
 
-            // ─── PHẦN 3: DỌN DẸP BỘ NHỚ ───
+            // ─── PHẦN 4: DỌN DẸP BỘ NHỚ ───
             val cacheClearedMsg = stringResource(R.string.toast_cache_cleared)
             val cacheClearFailedMsg = stringResource(R.string.toast_cache_clear_failed)
 
@@ -327,13 +418,11 @@ private fun SettingsBottomNavigation(
                 onClick = { onTabSelected("Tệp") }
             )
 
-            // NÚT CHÍNH GIỮA TRÒN XANH NGỌC (NÚT CHỤP ẢNH NHANH CAMERA)
             Box(
                 modifier = Modifier
                     .size(54.dp)
                     .clip(CircleShape)
                     .background(Color(0xFF14B8A6))
-                    // ─── ĐÃ SỬA: Nhấn vào đây sẽ thực thi callback mở camera y chang bên trang chủ ───
                     .clickable { onCenterClick() },
                 contentAlignment = Alignment.Center
             ) {

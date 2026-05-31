@@ -4,9 +4,10 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.util.Log
-import com.t2h.ocr.BuildConfig
+import com.t2h.ocr.data.local.UserPreferences
 import com.t2h.ocr.data.models.ScanMetadata
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -26,9 +27,6 @@ sealed class SummaryState {
 object PdfSummaryService {
 
     private const val TAG = "GEMINI_DEBUG"
-
-    private val API_URL =
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${BuildConfig.GEMINI_API_KEY}"
 
     private val prompt = """
 Bạn là một chuyên gia tóm tắt văn bản. Hãy tóm tắt văn bản sau theo yêu cầu:
@@ -52,13 +50,21 @@ Văn bản:
             return@withContext SummaryState.Error("Không có kết nối mạng. Vui lòng kiểm tra Wifi hoặc dữ liệu di động.")
         }
 
+        // Đọc API key từ DataStore
+        val apiKey = UserPreferences(context).geminiApiKey.first()
+
+        if (apiKey.isBlank()) {
+            return@withContext SummaryState.Error("Chưa có API Key. Vui lòng vào tab Công cụ → Cấu hình AI để nhập Gemini API Key.")
+        }
+
+        val apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
+
         Log.d(TAG, "=== BẮT ĐẦU GỌI GEMINI API ===")
-        Log.d(TAG, "API URL: $API_URL")
-        Log.d(TAG, "Key prefix: ${BuildConfig.GEMINI_API_KEY.take(10)}...")
+        Log.d(TAG, "Key prefix: ${apiKey.take(10)}...")
 
         try {
             val requestBody = buildRequestBody("$prompt$ocrText")
-            val url = URL(API_URL)
+            val url = URL(apiUrl)
             val connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 setRequestProperty("Content-Type", "application/json")
@@ -80,7 +86,11 @@ Văn bản:
 
             if (responseCode != HttpURLConnection.HTTP_OK) {
                 Log.e(TAG, "LỖI $responseCode: $responseText")
-                return@withContext SummaryState.Error("Lỗi API ($responseCode): ${parseErrorMessage(responseText)}")
+                val hint = if (responseCode == 403 || responseCode == 401)
+                    "API Key không hợp lệ. Vui lòng kiểm tra lại trong tab Công cụ → Cấu hình AI."
+                else
+                    "Lỗi API ($responseCode): ${parseErrorMessage(responseText)}"
+                return@withContext SummaryState.Error(hint)
             }
 
             val rawText = parseResponseText(responseText)
