@@ -5,7 +5,7 @@
 ### 1.1 Document Scanning & OCR
 - [x] **REQ-1.1.1:** Real-time text recognition using Google ML Kit.
 - [x] **REQ-1.1.2:** Camera integration with live preview and auto-capture capabilities.
-- [ ] **REQ-1.1.3:** Support for image selection from the device gallery.
+- [x] **REQ-1.1.3:** Support for image selection from the device gallery.
 - [x] **REQ-1.1.4:** Visual feedback for detected text (bounding boxes) during scanning.
 - [x] **REQ-1.1.5:** Text extraction and basic editing of extracted text.
 
