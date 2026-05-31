@@ -169,6 +169,22 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    val galleryPickerLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.PickVisualMedia()
+                    ) { uri ->
+                        if (uri != null) {
+                            scope.launch {
+                                try {
+                                    val path = ImageProcessor.copyUriToCache(context, uri)
+                                    val corners = ImageProcessor.detectCornersInFile(path)
+                                    currentScreen = Screen.Crop(path, corners)
+                                } catch (e: Exception) {
+                                    Log.e("MainActivity", "Gallery Import FAILED", e)
+                                }
+                            }
+                        }
+                    }
+
                     val openScannerWithPermissionCheck = {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                             currentScreen = Screen.Scanner
@@ -248,6 +264,13 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToSection = { sectionName ->
                                         when (sectionName) {
                                             "Quét" -> openScannerWithPermissionCheck()
+                                            "Ảnh" -> {
+                                                galleryPickerLauncher.launch(
+                                                    androidx.activity.result.PickVisualMediaRequest(
+                                                        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                                                    )
+                                                )
+                                            }
                                             "Tệp" -> currentScreen = Screen.Files
                                             "Xem tất cả" -> currentScreen = Screen.History
                                             "Hồ sơ" -> currentScreen = Screen.Profile
