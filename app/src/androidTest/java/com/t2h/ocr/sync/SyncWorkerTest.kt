@@ -14,6 +14,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.t2h.ocr.data.models.ScanMetadata
 import com.t2h.ocr.data.sync.DriveUploader
 import com.t2h.ocr.data.sync.SyncWorker
+import com.t2h.ocr.data.sync.UploadResult
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -81,9 +82,10 @@ class SyncWorkerTest {
         every { ScanRepository.getInstance(any()) } returns repository
         every { repository.loadScans() } returns listOf(scan)
 
-        // Mock DriveUploader
+        // Mock DriveUploader — trả về UploadResult.Success thay vì String
         mockkConstructor(DriveUploader::class)
-        coEvery { anyConstructed<DriveUploader>().uploadPdf(any()) } returns "https://drive.google.com/test"
+        coEvery { anyConstructed<DriveUploader>().uploadPdf(any()) } returns
+                UploadResult.Success("https://drive.google.com/test")
 
         // Mock GoogleSignIn
         mockkStatic(com.google.android.gms.auth.api.signin.GoogleSignIn::class)
@@ -103,7 +105,6 @@ class SyncWorkerTest {
         val task = mockk<com.google.android.gms.tasks.Task<Void>>()
         every { scanDoc.set(any()) } returns task
         
-        // We avoid mocking Task.await() as it's complex, but we ensure the flow completes
         val worker = TestListenableWorkerBuilder<SyncWorker>(context)
             .setInputData(Data.Builder().putString("scan_id", scanId).build())
             .build()
@@ -129,8 +130,10 @@ class SyncWorkerTest {
         every { ScanRepository.getInstance(any()) } returns repository
         every { repository.loadScans() } returns listOf(scan)
 
+        // Mock DriveUploader — trả về UploadResult.Error thay vì null
         mockkConstructor(DriveUploader::class)
-        coEvery { anyConstructed<DriveUploader>().uploadPdf(any()) } returns null
+        coEvery { anyConstructed<DriveUploader>().uploadPdf(any()) } returns
+                UploadResult.Error("Upload failed")
 
         mockkStatic(com.google.android.gms.auth.api.signin.GoogleSignIn::class)
         every { com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(any()) } returns mockk()

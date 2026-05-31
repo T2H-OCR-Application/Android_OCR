@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Search
@@ -27,11 +28,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.t2h.ocr.R
 import com.t2h.ocr.data.ScanRepository
+import com.t2h.ocr.data.SummaryRepository
 import com.t2h.ocr.data.models.ScanMetadata
+import com.t2h.ocr.data.models.SummaryMetadata
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+// ─── Màu dùng chung ───
+private val BrandTeal = Color(0xFF14B8A6)
+private val BrandGold = Color(0xFFD4AF37)
+private val SurfaceDark = Color(0xFF252329)
+private val BackgroundDark = Color(0xFF1A1D24)
 
 data class DocumentFile(
     val id: String,
@@ -53,7 +62,7 @@ private fun ScanMetadata.toDocumentFile(): DocumentFile {
         name = displayName,
         date = dateText,
         size = sizeText,
-        pageCount = if (pdfPath.isNotBlank()) 1 else 1,
+        pageCount = 1,
         isPdf = pdfPath.isNotBlank()
     )
 }
@@ -71,25 +80,42 @@ private fun formatFileSize(bytes: Long): String {
     return String.format(Locale.getDefault(), "%.1f %s", bytes / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups])
 }
 
+// ─── Tab enum ───
+private enum class FilesTab { SCANS, SUMMARIES }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilesScreen(
     scanRepository: ScanRepository,
+    summaryRepository: SummaryRepository? = null,
     onNavigateToSection: (String) -> Unit = {},
     onCenterFabClick: () -> Unit = {},
     onOpenScan: (ScanMetadata) -> Unit = {},
-    onDeleteScan: (ScanMetadata) -> Unit = {}
+    onDeleteScan: (ScanMetadata) -> Unit = {},
+    onOpenSummary: (SummaryMetadata) -> Unit = {},
+    onDeleteSummary: (SummaryMetadata) -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    // Thiết lập trạng thái tab hiện tại mặc định là "Tệp" khi vào màn hình này
     var currentTab by remember { mutableStateOf("Tệp") }
+    var selectedFilesTab by remember { mutableStateOf(FilesTab.SCANS) }
 
     val scans by scanRepository.scans.collectAsState(initial = emptyList())
+    val summaries by (summaryRepository?.summaries
+        ?: kotlinx.coroutines.flow.MutableStateFlow(emptyList())).collectAsState(initial = emptyList())
+
     val filteredScans = remember(scans, searchQuery) {
         scans.filter { scan ->
             searchQuery.isBlank() ||
                     scan.title.contains(searchQuery, ignoreCase = true) ||
                     scan.ocrText.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
+    val filteredSummaries = remember(summaries, searchQuery) {
+        summaries.filter { summary ->
+            searchQuery.isBlank() ||
+                    summary.title.contains(searchQuery, ignoreCase = true) ||
+                    summary.summaryText.contains(searchQuery, ignoreCase = true)
         }
     }
 
@@ -104,7 +130,7 @@ fun FilesScreen(
                         fontWeight = FontWeight.Bold
                     )
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF1A1D24))
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundDark)
             )
         },
         bottomBar = {
@@ -112,7 +138,6 @@ fun FilesScreen(
                 currentTab = currentTab,
                 onTabSelected = { tabName ->
                     currentTab = tabName
-                    // ─── ĐÃ SỬA: Nhấn tab nào điều hướng chuẩn sang màn đó dựa theo MainActivity ───
                     when (tabName) {
                         "Trang chủ" -> onNavigateToSection("Trang chủ")
                         "Tệp" -> onNavigateToSection("Tệp")
@@ -123,15 +148,15 @@ fun FilesScreen(
                 onCenterClick = onCenterFabClick
             )
         },
-        containerColor = Color(0xFF1A1D24)
+        containerColor = BackgroundDark
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .background(Color(0xFF1A1D24))
+                .background(BackgroundDark)
         ) {
-            // ─── 1. THANH TÌM KIẾM TẬP TIN ───
+            // ─── 1. THANH TÌM KIẾM ───
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -158,8 +183,8 @@ fun FilesScreen(
                 colors = TextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    focusedContainerColor = Color(0xFF252329),
-                    unfocusedContainerColor = Color(0xFF252329),
+                    focusedContainerColor = SurfaceDark,
+                    unfocusedContainerColor = SurfaceDark,
                     cursorColor = Color.White,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
@@ -171,40 +196,171 @@ fun FilesScreen(
                 shape = RoundedCornerShape(12.dp)
             )
 
-            // ─── 2. DANH SÁCH FILE BENTO LIST ───
-            if (filteredScans.isEmpty()) {
-                Box(
+            // ─── 2. TAB CHỌN: SCAN vs SUMMARY ───
+            if (summaryRepository != null) {
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = if (searchQuery.isBlank()) "Thư mục lịch sử trống" else "Không tìm thấy tệp",
-                        color = Color.Gray,
-                        fontSize = 14.sp
+                    FilesTabChip(
+                        label = "Tài liệu quét",
+                        count = filteredScans.size,
+                        isSelected = selectedFilesTab == FilesTab.SCANS,
+                        color = BrandTeal,
+                        onClick = { selectedFilesTab = FilesTab.SCANS },
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilesTabChip(
+                        label = "Tóm tắt AI",
+                        count = filteredSummaries.size,
+                        isSelected = selectedFilesTab == FilesTab.SUMMARIES,
+                        color = BrandGold,
+                        onClick = { selectedFilesTab = FilesTab.SUMMARIES },
+                        modifier = Modifier.weight(1f)
                     )
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(filteredScans, key = { it.id }) { scan ->
-                        FileItemRow(
-                            file = scan.toDocumentFile(),
-                            onClick = { onOpenScan(scan) },
-                            onDelete = { onDeleteScan(scan) }
-                        )
-                    }
+            }
+
+            // ─── 3. DANH SÁCH ───
+            when {
+                summaryRepository == null || selectedFilesTab == FilesTab.SCANS -> {
+                    ScansListSection(
+                        scans = filteredScans,
+                        searchQuery = searchQuery,
+                        onOpenScan = onOpenScan,
+                        onDeleteScan = onDeleteScan
+                    )
+                }
+                selectedFilesTab == FilesTab.SUMMARIES -> {
+                    SummariesListSection(
+                        summaries = filteredSummaries,
+                        searchQuery = searchQuery,
+                        onOpenSummary = onOpenSummary,
+                        onDeleteSummary = onDeleteSummary
+                    )
                 }
             }
         }
     }
 }
 
-// ─── COMPONENT ITEM TỪNG TỆP TIN ───
+// ─── Tab chip component ───
+@Composable
+private fun FilesTabChip(
+    label: String,
+    count: Int,
+    isSelected: Boolean,
+    color: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (isSelected) color.copy(alpha = 0.15f) else SurfaceDark)
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                color = if (isSelected) color else Color.Gray,
+                fontSize = 13.sp,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+            )
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(if (isSelected) color.copy(alpha = 0.2f) else Color.Gray.copy(alpha = 0.2f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "$count",
+                    color = if (isSelected) color else Color.Gray,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+// ─── Danh sách scan ───
+@Composable
+private fun ScansListSection(
+    scans: List<ScanMetadata>,
+    searchQuery: String,
+    onOpenScan: (ScanMetadata) -> Unit,
+    onDeleteScan: (ScanMetadata) -> Unit
+) {
+    if (scans.isEmpty()) {
+        EmptyState(
+            text = if (searchQuery.isBlank()) "Thư mục lịch sử trống" else "Không tìm thấy tệp"
+        )
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(scans, key = { it.id }) { scan ->
+                FileItemRow(
+                    file = scan.toDocumentFile(),
+                    onClick = { onOpenScan(scan) },
+                    onDelete = { onDeleteScan(scan) }
+                )
+            }
+        }
+    }
+}
+
+// ─── Danh sách summary ───
+@Composable
+private fun SummariesListSection(
+    summaries: List<SummaryMetadata>,
+    searchQuery: String,
+    onOpenSummary: (SummaryMetadata) -> Unit,
+    onDeleteSummary: (SummaryMetadata) -> Unit
+) {
+    if (summaries.isEmpty()) {
+        EmptyState(
+            text = if (searchQuery.isBlank()) "Chưa có bản tóm tắt nào" else "Không tìm thấy tóm tắt"
+        )
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(summaries, key = { it.id }) { summary ->
+                SummaryItemRow(
+                    summary = summary,
+                    onClick = { onOpenSummary(summary) },
+                    onDelete = { onDeleteSummary(summary) }
+                )
+            }
+        }
+    }
+}
+
+// ─── Empty state chung ───
+@Composable
+private fun EmptyState(text: String) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = text, color = Color.Gray, fontSize = 14.sp)
+    }
+}
+
+// ─── COMPONENT ITEM TÀI LIỆU QUÉT ───
 @Composable
 fun FileItemRow(
     file: DocumentFile,
@@ -216,7 +372,7 @@ fun FileItemRow(
             .fillMaxWidth()
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF252329))
+        colors = CardDefaults.cardColors(containerColor = SurfaceDark)
     ) {
         Row(
             modifier = Modifier
@@ -230,14 +386,14 @@ fun FileItemRow(
                     .clip(RoundedCornerShape(12.dp))
                     .background(
                         if (file.isPdf) Color(0xFFEF4444).copy(alpha = 0.15f)
-                        else Color(0xFF14B8A6).copy(alpha = 0.15f)
+                        else BrandTeal.copy(alpha = 0.15f)
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (file.isPdf) Icons.Default.PictureAsPdf else Icons.Default.TextSnippet,
                     contentDescription = null,
-                    tint = if (file.isPdf) Color(0xFFEF4444) else Color(0xFF14B8A6),
+                    tint = if (file.isPdf) Color(0xFFEF4444) else BrandTeal,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -274,7 +430,7 @@ fun FileItemRow(
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.DeleteOutline,
-                    contentDescription = "Delete File",
+                    contentDescription = "Xóa",
                     tint = Color.Gray.copy(alpha = 0.6f),
                     modifier = Modifier.size(20.dp)
                 )
@@ -283,7 +439,105 @@ fun FileItemRow(
     }
 }
 
-// ─── COMPONENT BOTTOM NAVIGATION TRÀN CẠNH ───
+// ─── COMPONENT ITEM TÓM TẮT AI ───
+@Composable
+private fun SummaryItemRow(
+    summary: SummaryMetadata,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val dateStr = remember(summary.timestamp) {
+        if (summary.timestamp > 0)
+            SimpleDateFormat("dd MMM, yyyy HH:mm", Locale.getDefault()).format(Date(summary.timestamp))
+        else ""
+    }
+    val wordCount = remember(summary.summaryText) {
+        summary.summaryText.trim().split(Regex("\\s+")).filter { it.isNotBlank() }.size
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceDark)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icon tóm tắt AI — màu vàng hổ phách
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(BrandGold.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = BrandGold,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = summary.title.ifBlank { "Tóm tắt không tên" },
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(text = dateStr, color = Color.Gray, fontSize = 12.sp)
+                    if (wordCount > 0) {
+                        Box(modifier = Modifier.size(3.dp).clip(CircleShape).background(Color.DarkGray))
+                        Text(text = "$wordCount từ", color = BrandGold.copy(alpha = 0.7f), fontSize = 12.sp)
+                    }
+                }
+                // Badge synced/local
+                if (summary.isSynced) {
+                    Text(
+                        text = "☁ Đã đồng bộ Drive",
+                        color = BrandTeal.copy(alpha = 0.8f),
+                        fontSize = 11.sp
+                    )
+                } else {
+                    Text(
+                        text = "📱 Lưu cục bộ",
+                        color = Color.Gray.copy(alpha = 0.6f),
+                        fontSize = 11.sp
+                    )
+                }
+            }
+
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.DeleteOutline,
+                    contentDescription = "Xóa",
+                    tint = Color.Gray.copy(alpha = 0.6f),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+// ─── COMPONENT BOTTOM NAVIGATION ───
 @Composable
 private fun HomeBottomNavigation(
     currentTab: String,
@@ -294,7 +548,7 @@ private fun HomeBottomNavigation(
         modifier = Modifier
             .fillMaxWidth()
             .height(72.dp)
-            .background(Color(0xFF1A1D24))
+            .background(BackgroundDark)
     ) {
         Box(
             modifier = Modifier
@@ -323,12 +577,11 @@ private fun HomeBottomNavigation(
                 onClick = { onTabSelected("Tệp") }
             )
 
-            // NÚT CHÍNH GIỮA (CAMERA ACTION) - Giữ màu xanh ngọc làm điểm nhấn nổi bật riêng biệt
             Box(
                 modifier = Modifier
                     .size(54.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF14B8A6))
+                    .background(BrandTeal)
                     .clickable { onCenterClick() },
                 contentAlignment = Alignment.Center
             ) {
@@ -373,15 +626,13 @@ private fun NavigationItem(
         Icon(
             painter = painterResource(id = iconRes),
             contentDescription = title,
-            // ─── ĐÃ KHÔI PHỤC: Chuyển lại màu vàng hổ phách (0xFFD4AF37) chuẩn xác khi tab được chọn ───
-            tint = if (isSelected) Color(0xFFD4AF37) else Color.Gray,
+            tint = if (isSelected) BrandGold else Color.Gray,
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = title,
-            // ─── ĐÃ KHÔI PHỤC: Màu chữ vàng khi active giống hệt icon ───
-            color = if (isSelected) Color(0xFFD4AF37) else Color.Gray,
+            color = if (isSelected) BrandGold else Color.Gray,
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
         )

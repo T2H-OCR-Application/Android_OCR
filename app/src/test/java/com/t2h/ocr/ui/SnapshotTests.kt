@@ -4,7 +4,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.t2h.ocr.ui.home.HomeScreen
-import com.t2h.ocr.ui.home.HomeViewModel
 import com.t2h.ocr.ui.scanner.ScannerScreen
 import com.t2h.ocr.ui.scanner.ScannerViewModel
 import com.t2h.ocr.ui.results.ResultsScreen
@@ -29,15 +28,14 @@ class SnapshotTests {
 
     @Test
     fun captureHomeScreen() {
-        val viewModel = mockk<HomeViewModel>(relaxed = true)
-        every { viewModel.searchQuery } returns MutableStateFlow("")
-        every { viewModel.filteredScans } returns MutableStateFlow(emptyList())
-
+        // HomeScreen signature đã thay đổi — test đơn giản bằng cách mock data
         composeTestRule.setContent {
             HomeScreen(
-                viewModel = viewModel,
-                onScanClick = {},
-                onNewScanClick = {}
+                recentHistory = emptyList(),
+                onNavigateToSection = {},
+                onCenterFabClick = {},
+                onRecentItemClick = {},
+                onRecentItemDelete = {}
             )
         }
         composeTestRule.onRoot().captureRoboImage()
@@ -53,7 +51,8 @@ class SnapshotTests {
                 viewModel = viewModel,
                 onDocumentCaptured = { _, _ -> },
                 onProfileClick = {},
-                onGalleryClick = {}
+                onGalleryClick = {},
+                onBackClick = {}
             )
         }
         composeTestRule.onRoot().captureRoboImage()

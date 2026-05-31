@@ -480,6 +480,7 @@ class MainActivity : ComponentActivity() {
                                                 isProcessing = false
                                                 if (result != null) {
                                                     try { File(screen.imagePath).delete() } catch (e: Exception) {}
+
                                                     scannerViewModel.logOcrPerformance(latency, 1, "success")
                                                     scannerViewModel.addPage(ScannedPage(imagePath = result.second, text = result.first.text))
                                                     currentScreen = Screen.Gallery
