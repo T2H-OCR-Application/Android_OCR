@@ -1,7 +1,10 @@
 package com.t2h.ocr.ui.profile
 
+import android.app.Activity
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
@@ -34,6 +37,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import com.t2h.ocr.R
+import com.t2h.ocr.auth.requestDriveFileScope
 import com.t2h.ocr.data.auth.AuthRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,6 +67,14 @@ fun ProfileScreen(
     val signInCancelledMsg = stringResource(R.string.toast_sign_in_cancelled)
     val scope = rememberCoroutineScope()
     val credentialManager = remember { CredentialManager.create(context) }
+    val driveAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) {
+            Log.i("ProfileScreen", "Drive scope dialog dismissed after account linking")
+        }
+        Toast.makeText(context, accountLinkedMsg, Toast.LENGTH_SHORT).show()
+    }
 
     // ─── HỘP THOẠI XÁC NHẬN ĐĂNG XUẤT ───
     if (showLogoutDialog) {
@@ -264,8 +276,28 @@ fun ProfileScreen(
                                         val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credResult.credential.data)
                                         authRepository.linkWithGoogle(googleIdTokenCredential.idToken) { success ->
                                             isLoading = false
-                                            if (success) Toast.makeText(context, accountLinkedMsg, Toast.LENGTH_SHORT).show()
-                                            else errorMessage = linkFailedMsg
+                                            if (success) {
+                                                requestDriveFileScope(
+                                                    context = context,
+                                                    onNeedsResolution = { intentRequest ->
+                                                        try {
+                                                            driveAuthLauncher.launch(intentRequest)
+                                                        } catch (e: Exception) {
+                                                            Log.w("ProfileScreen", "Unable to launch Drive scope dialog", e)
+                                                            Toast.makeText(context, accountLinkedMsg, Toast.LENGTH_SHORT).show()
+                                                        }
+                                                    },
+                                                    onAuthorizedOrSkipped = {
+                                                        Toast.makeText(context, accountLinkedMsg, Toast.LENGTH_SHORT).show()
+                                                    },
+                                                    onFailure = { error ->
+                                                        Log.w("ProfileScreen", "Drive scope request failed after linking", error)
+                                                        Toast.makeText(context, accountLinkedMsg, Toast.LENGTH_SHORT).show()
+                                                    }
+                                                )
+                                            } else {
+                                                errorMessage = linkFailedMsg
+                                            }
                                         }
                                     } catch (e: GetCredentialCancellationException) {
                                         isLoading = false
@@ -414,69 +446,73 @@ private fun ProfileBottomNavigation(
     onTabSelected: (String) -> Unit,
     onCenterClick: () -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(72.dp)
-            .background(Color(0xFF1A1D24))
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(0.5.dp)
-                .background(Color.White.copy(alpha = 0.1f))
-                .align(Alignment.TopCenter)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceAround
+                .height(72.dp)
+                .background(Color(0xFF1A1D24))
         ) {
-            NavigationItem(
-                title = "Trang chủ",
-                iconRes = R.drawable.material_symbols_home_outline_rounded,
-                isSelected = currentTab == "Trang chủ",
-                onClick = { onTabSelected("Trang chủ") }
-            )
-
-            NavigationItem(
-                title = "Tệp",
-                iconRes = R.drawable.mingcute_document_line,
-                isSelected = currentTab == "Tệp",
-                onClick = { onTabSelected("Tệp") }
-            )
-
-            // NÚT CHÍNH GIỮA (QUÉT NHANH CAMERA)
             Box(
                 modifier = Modifier
-                    .size(54.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF14B8A6))
-                    .clickable { onCenterClick() },
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .height(0.5.dp)
+                    .background(Color.White.copy(alpha = 0.1f))
+                    .align(Alignment.TopCenter)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceAround
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.tabler_photo_plus),
-                    contentDescription = "Center Action",
-                    modifier = Modifier.size(24.dp)
+                NavigationItem(
+                    title = "Trang chủ",
+                    iconRes = R.drawable.material_symbols_home_outline_rounded,
+                    isSelected = currentTab == "Trang chủ",
+                    onClick = { onTabSelected("Trang chủ") }
+                )
+
+                NavigationItem(
+                    title = "Tệp",
+                    iconRes = R.drawable.mingcute_document_line,
+                    isSelected = currentTab == "Tệp",
+                    onClick = { onTabSelected("Tệp") }
+                )
+
+                // NÚT CHÍNH GIỮA (QUÉT NHANH CAMERA)
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF14B8A6))
+                        .clickable { onCenterClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.tabler_photo_plus),
+                        contentDescription = "Center Action",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                NavigationItem(
+                    title = "Công cụ",
+                    iconRes = R.drawable.tdesign_tools_circle,
+                    isSelected = currentTab == "Công cụ",
+                    onClick = { onTabSelected("Công cụ") }
+                )
+
+                NavigationItem(
+                    title = "Hồ sơ",
+                    iconRes = R.drawable.mingcute_user_4_line,
+                    isSelected = currentTab == "Hồ sơ",
+                    onClick = { onTabSelected("Hồ sơ") }
                 )
             }
-
-            NavigationItem(
-                title = "Công cụ",
-                iconRes = R.drawable.tdesign_tools_circle,
-                isSelected = currentTab == "Công cụ",
-                onClick = { onTabSelected("Công cụ") }
-            )
-
-            NavigationItem(
-                title = "Hồ sơ",
-                iconRes = R.drawable.mingcute_user_4_line,
-                isSelected = currentTab == "Hồ sơ",
-                onClick = { onTabSelected("Hồ sơ") }
-            )
         }
+
+        Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
     }
 }
 

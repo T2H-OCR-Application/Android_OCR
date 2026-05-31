@@ -544,68 +544,72 @@ private fun HomeBottomNavigation(
     onTabSelected: (String) -> Unit,
     onCenterClick: () -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(72.dp)
-            .background(BackgroundDark)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(0.5.dp)
-                .background(Color.White.copy(alpha = 0.1f))
-                .align(Alignment.TopCenter)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceAround
+                .height(72.dp)
+                .background(BackgroundDark)
         ) {
-            NavigationItem(
-                title = "Trang chủ",
-                iconRes = R.drawable.material_symbols_home_outline_rounded,
-                isSelected = currentTab == "Trang chủ",
-                onClick = { onTabSelected("Trang chủ") }
-            )
-
-            NavigationItem(
-                title = "Tệp",
-                iconRes = R.drawable.mingcute_document_line,
-                isSelected = currentTab == "Tệp",
-                onClick = { onTabSelected("Tệp") }
-            )
-
             Box(
                 modifier = Modifier
-                    .size(54.dp)
-                    .clip(CircleShape)
-                    .background(BrandTeal)
-                    .clickable { onCenterClick() },
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .height(0.5.dp)
+                    .background(Color.White.copy(alpha = 0.1f))
+                    .align(Alignment.TopCenter)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceAround
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.tabler_photo_plus),
-                    contentDescription = "Center Action",
-                    modifier = Modifier.size(24.dp)
+                NavigationItem(
+                    title = "Trang chủ",
+                    iconRes = R.drawable.material_symbols_home_outline_rounded,
+                    isSelected = currentTab == "Trang chủ",
+                    onClick = { onTabSelected("Trang chủ") }
+                )
+
+                NavigationItem(
+                    title = "Tệp",
+                    iconRes = R.drawable.mingcute_document_line,
+                    isSelected = currentTab == "Tệp",
+                    onClick = { onTabSelected("Tệp") }
+                )
+
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(CircleShape)
+                        .background(BrandTeal)
+                        .clickable { onCenterClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.tabler_photo_plus),
+                        contentDescription = "Center Action",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                NavigationItem(
+                    title = "Công cụ",
+                    iconRes = R.drawable.tdesign_tools_circle,
+                    isSelected = currentTab == "Công cụ",
+                    onClick = { onTabSelected("Công cụ") }
+                )
+
+                NavigationItem(
+                    title = "Hồ sơ",
+                    iconRes = R.drawable.mingcute_user_4_line,
+                    isSelected = currentTab == "Hồ sơ",
+                    onClick = { onTabSelected("Hồ sơ") }
                 )
             }
-
-            NavigationItem(
-                title = "Công cụ",
-                iconRes = R.drawable.tdesign_tools_circle,
-                isSelected = currentTab == "Công cụ",
-                onClick = { onTabSelected("Công cụ") }
-            )
-
-            NavigationItem(
-                title = "Hồ sơ",
-                iconRes = R.drawable.mingcute_user_4_line,
-                isSelected = currentTab == "Hồ sơ",
-                onClick = { onTabSelected("Hồ sơ") }
-            )
         }
+
+        Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
     }
 }
 

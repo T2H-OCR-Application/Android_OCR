@@ -118,13 +118,10 @@ fun HomeScreen(
                 }
             }
 
-            // 2. LƯỚI CHỨC NĂNG (QUÉT, VĂN BẢN, AI, TẬP TIN, PDF, ẢNH, TẤT CẢ)
+            // 2. LƯỚI CHỨC NĂNG (đã bỏ các mục chưa dùng: Văn bản, Tập tin, PDF)
             val categories = listOf(
                 CategoryItem("Quét", R.drawable.streamline_scanner_solid),
-                CategoryItem("Văn bản", R.drawable.f7_doc_text),
                 CategoryItem("AI", R.drawable.mingcute_ai_line),
-                CategoryItem("Tập tin", R.drawable.icon_add_file),
-                CategoryItem("PDF", R.drawable.pdf_icon),
                 CategoryItem("Ảnh", R.drawable.photo),
                 CategoryItem("Tất cả", R.drawable.material_symbols_border_all_rounded)
             )
@@ -132,21 +129,10 @@ fun HomeScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                categories.take(4).forEach { category ->
-                    CategoryButton(category = category, onClick = { onNavigateToSection(category.title) })
-                }
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(28.dp)
-            ) {
-                categories.drop(4).forEach { category ->
+                categories.forEach { category ->
                     CategoryButton(
                         category = category,
                         onClick = {
@@ -372,69 +358,73 @@ private fun HomeBottomNavigation(
     onTabSelected: (String) -> Unit,
     onCenterClick: () -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(72.dp)
-            .background(Color(0xFF1A1D24))
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(0.5.dp)
-                .background(Color.White.copy(alpha = 0.1f))
-                .align(Alignment.TopCenter)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceAround
+                .height(72.dp)
+                .background(Color(0xFF1A1D24))
         ) {
-            NavigationItem(
-                title = "Trang chủ",
-                iconRes = R.drawable.material_symbols_home_outline_rounded,
-                isSelected = currentTab == "Trang chủ",
-                onClick = { onTabSelected("Trang chủ") }
-            )
-
-            NavigationItem(
-                title = "Tệp",
-                iconRes = R.drawable.mingcute_document_line,
-                isSelected = currentTab == "Tệp",
-                onClick = { onTabSelected("Tệp") }
-            )
-
-            // NÚT CHÍNH GIỮA NỔI BẬT (CAMERA ACTION) - Giữ màu xanh ngọc thương hiệu
             Box(
                 modifier = Modifier
-                    .size(54.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF14B8A6))
-                    .clickable { onCenterClick() },
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .height(0.5.dp)
+                    .background(Color.White.copy(alpha = 0.1f))
+                    .align(Alignment.TopCenter)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceAround
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.tabler_photo_plus),
-                    contentDescription = "Center Action",
-                    modifier = Modifier.size(24.dp)
+                NavigationItem(
+                    title = "Trang chủ",
+                    iconRes = R.drawable.material_symbols_home_outline_rounded,
+                    isSelected = currentTab == "Trang chủ",
+                    onClick = { onTabSelected("Trang chủ") }
+                )
+
+                NavigationItem(
+                    title = "Tệp",
+                    iconRes = R.drawable.mingcute_document_line,
+                    isSelected = currentTab == "Tệp",
+                    onClick = { onTabSelected("Tệp") }
+                )
+
+                // NÚT CHÍNH GIỮA NỔI BẬT (CAMERA ACTION) - Giữ màu xanh ngọc thương hiệu
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF14B8A6))
+                        .clickable { onCenterClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.tabler_photo_plus),
+                        contentDescription = "Center Action",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                NavigationItem(
+                    title = "Công cụ",
+                    iconRes = R.drawable.tdesign_tools_circle,
+                    isSelected = currentTab == "Công cụ",
+                    onClick = { onTabSelected("Công cụ") }
+                )
+
+                NavigationItem(
+                    title = "Hồ sơ",
+                    iconRes = R.drawable.mingcute_user_4_line,
+                    isSelected = currentTab == "Hồ sơ",
+                    onClick = { onTabSelected("Hồ sơ") }
                 )
             }
-
-            NavigationItem(
-                title = "Công cụ",
-                iconRes = R.drawable.tdesign_tools_circle,
-                isSelected = currentTab == "Công cụ",
-                onClick = { onTabSelected("Công cụ") }
-            )
-
-            NavigationItem(
-                title = "Hồ sơ",
-                iconRes = R.drawable.mingcute_user_4_line,
-                isSelected = currentTab == "Hồ sơ",
-                onClick = { onTabSelected("Hồ sơ") }
-            )
         }
+
+        Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
     }
 }
 

@@ -1,5 +1,6 @@
 package com.t2h.ocr.ui.login
 
+import android.app.Activity
 import android.util.Log
 import android.util.Patterns
 import android.widget.Toast
@@ -62,9 +63,12 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.t2h.ocr.R
+import com.t2h.ocr.auth.requestDriveFileScope
 import com.t2h.ocr.data.auth.AuthRepository
 import kotlinx.coroutines.launch
 
@@ -86,6 +90,15 @@ fun LoginScreen(
     val signInCancelledMsg = "Sign-In cancelled"
     val scope = rememberCoroutineScope()
     val credentialManager = remember { CredentialManager.create(context) }
+
+    val driveAuthLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) {
+            Log.i("LoginScreen", "Drive scope dialog dismissed, continuing sign-in")
+        }
+        onAuthSuccess()
+    }
 
     AuthBackground {
         Column(
@@ -201,8 +214,26 @@ fun LoginScreen(
                             val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credResult.credential.data)
                             authRepository.signInWithGoogle(googleIdTokenCredential.idToken) { success ->
                                 isLoading = false
-                                if (success) onAuthSuccess()
-                                else errorMessage = "Firebase authentication with Google failed"
+                                if (success) {
+                                    requestDriveFileScope(
+                                        context = context,
+                                        onNeedsResolution = { intentRequest ->
+                                            try {
+                                                driveAuthLauncher.launch(intentRequest)
+                                            } catch (e: Exception) {
+                                                Log.w("LoginScreen", "Unable to launch Drive scope dialog", e)
+                                                onAuthSuccess()
+                                            }
+                                        },
+                                        onAuthorizedOrSkipped = onAuthSuccess,
+                                        onFailure = { error ->
+                                            Log.w("LoginScreen", "Drive scope request failed; continue login", error)
+                                            onAuthSuccess()
+                                        }
+                                    )
+                                } else {
+                                    errorMessage = "Firebase authentication with Google failed"
+                                }
                             }
                         } catch (e: GetCredentialCancellationException) {
                             isLoading = false
