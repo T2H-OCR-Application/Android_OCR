@@ -141,7 +141,7 @@ fun FilesScreen(
                     when (tabName) {
                         "Trang chủ" -> onNavigateToSection("Trang chủ")
                         "Tệp" -> onNavigateToSection("Tệp")
-                        "Công cụ" -> onNavigateToSection("Công cụ")
+                        "Cài đặt" -> onNavigateToSection("Cài đặt")
                         "Hồ sơ" -> onNavigateToSection("Hồ sơ")
                     }
                 },
@@ -213,7 +213,7 @@ fun FilesScreen(
                         modifier = Modifier.weight(1f)
                     )
                     FilesTabChip(
-                        label = "Tóm tắt AI",
+                        label = "Tóm tắt",
                         count = filteredSummaries.size,
                         isSelected = selectedFilesTab == FilesTab.SUMMARIES,
                         color = BrandGold,
@@ -594,10 +594,10 @@ private fun HomeBottomNavigation(
                 }
 
                 NavigationItem(
-                    title = "Công cụ",
+                    title = "Cài đặt",
                     iconRes = R.drawable.tdesign_tools_circle,
-                    isSelected = currentTab == "Công cụ",
-                    onClick = { onTabSelected("Công cụ") }
+                    isSelected = currentTab == "Cài đặt",
+                    onClick = { onTabSelected("Cài đặt") }
                 )
 
                 NavigationItem(

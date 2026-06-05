@@ -260,7 +260,7 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToSection = { sectionName ->
                                         when (sectionName) {
                                             "Quét" -> openScannerWithPermissionCheck()
-                                            "AI" -> currentScreen = Screen.Summary
+                                            "Tóm tắt" -> currentScreen = Screen.Summary
                                             "Ảnh" -> {
                                                 galleryPickerLauncher.launch(
                                                     androidx.activity.result.PickVisualMediaRequest(

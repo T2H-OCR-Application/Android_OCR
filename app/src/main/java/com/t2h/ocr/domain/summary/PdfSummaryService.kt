@@ -30,7 +30,7 @@ object PdfSummaryService {
 
     private val prompt = """
 Bạn là một chuyên gia tóm tắt văn bản. Hãy tóm tắt văn bản sau theo yêu cầu:
-- Độ dài tóm tắt: tối đa 25% độ dài văn bản gốc, càng ngắn gọn càng tốt
+- Độ dài tóm tắt: tối đa 5% đến 10% độ dài văn bản gốc, Tóm tắt ngắn gọn nhất có thể nhưng vẫn giữ đầy đủ các ý chính quan trọng
 - Giữ nguyên ngôn ngữ của văn bản gốc (tự nhận diện ngôn ngữ)
 - Chỉ giữ lại những ý chính quan trọng nhất, bỏ qua chi tiết phụ
 - Diễn đạt súc tích, mạch lạc
@@ -54,7 +54,7 @@ Văn bản:
         val apiKey = UserPreferences(context).geminiApiKey.first()
 
         if (apiKey.isBlank()) {
-            return@withContext SummaryState.Error("Chưa có API Key. Vui lòng vào tab Công cụ → Cấu hình AI để nhập Gemini API Key.")
+            return@withContext SummaryState.Error("Chưa có API Key. Vui lòng vào tab Cài đặt → Cấu hình AI để nhập Gemini API Key.")
         }
 
         val apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$apiKey"
@@ -87,7 +87,7 @@ Văn bản:
             if (responseCode != HttpURLConnection.HTTP_OK) {
                 Log.e(TAG, "LỖI $responseCode: $responseText")
                 val hint = if (responseCode == 403 || responseCode == 401)
-                    "API Key không hợp lệ. Vui lòng kiểm tra lại trong tab Công cụ → Cấu hình AI."
+                    "API Key không hợp lệ. Vui lòng kiểm tra lại trong phần Cài đặt → Cấu hình AI."
                 else
                     "Lỗi API ($responseCode): ${parseErrorMessage(responseText)}"
                 return@withContext SummaryState.Error(hint)

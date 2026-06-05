@@ -48,7 +48,7 @@ fun SettingsScreen(
     var apiKeyInput by remember(savedApiKey) { mutableStateOf(savedApiKey) }
     var showKey by remember { mutableStateOf(false) }
 
-    val currentTab = "Công cụ"
+    val currentTab = "Cài đặt"
 
     Scaffold(
         topBar = {
@@ -435,10 +435,10 @@ private fun SettingsBottomNavigation(
                 }
 
                 NavigationItem(
-                    title = "Công cụ",
+                    title = "Cài đặt",
                     iconRes = R.drawable.tdesign_tools_circle,
-                    isSelected = currentTab == "Công cụ",
-                    onClick = { onTabSelected("Công cụ") }
+                    isSelected = currentTab == "Cài đặt",
+                    onClick = { onTabSelected("Cài đặt") }
                 )
 
                 NavigationItem(

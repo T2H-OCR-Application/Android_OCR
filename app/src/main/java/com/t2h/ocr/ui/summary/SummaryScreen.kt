@@ -187,7 +187,7 @@ private fun SelectingScanStep(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "AI sẽ rút gọn nội dung xuống còn ~30–40% độ dài gốc, giữ nguyên ngôn ngữ.",
+                    text = "Hãy chọn file pdf bạn cần tóm tắt và AI sẽ tóm tắt cho bạn",
                     color = Color.Gray,
                     fontSize = 12.sp
                 )

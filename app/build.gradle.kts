@@ -157,4 +157,4 @@ dependencies {
     implementation(libs.androidx.credentials.play.services)
     implementation(libs.googleid)
 }
->>>>>>> d91807f (remove api from gradle to local property)
+

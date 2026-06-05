@@ -63,7 +63,7 @@ fun HomeScreen(
                     currentTab = tabName
                     when (tabName) {
                         "Tệp" -> onNavigateToSection("Tệp")
-                        "Công cụ" -> onNavigateToSection("Công cụ")
+                        "Cài đặt" -> onNavigateToSection("Cài đặt")
                         "Hồ sơ" -> onNavigateToSection("Hồ sơ")
                     }
                 },
@@ -121,7 +121,7 @@ fun HomeScreen(
             // 2. LƯỚI CHỨC NĂNG (đã bỏ các mục chưa dùng: Văn bản, Tập tin, PDF)
             val categories = listOf(
                 CategoryItem("Quét", R.drawable.streamline_scanner_solid),
-                CategoryItem("AI", R.drawable.mingcute_ai_line),
+                CategoryItem("Tóm tắt", R.drawable.mingcute_ai_line),
                 CategoryItem("Ảnh", R.drawable.photo),
                 CategoryItem("Tất cả", R.drawable.material_symbols_border_all_rounded)
             )
@@ -409,10 +409,10 @@ private fun HomeBottomNavigation(
                 }
 
                 NavigationItem(
-                    title = "Công cụ",
+                    title = "Cài đặt",
                     iconRes = R.drawable.tdesign_tools_circle,
-                    isSelected = currentTab == "Công cụ",
-                    onClick = { onTabSelected("Công cụ") }
+                    isSelected = currentTab == "Cài đặt",
+                    onClick = { onTabSelected("Cài đặt") }
                 )
 
                 NavigationItem(

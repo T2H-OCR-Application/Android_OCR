@@ -78,7 +78,7 @@ fun HistoryScreen(
                     when (tabName) {
                         "Trang chủ" -> { /* Đang thuộc nhánh xem tiếp từ Trang chủ, không chạy lại */ }
                         "Tệp" -> onNavigateToSection("Tệp")
-                        "Công cụ" -> onNavigateToSection("Công cụ")
+                        "Cài đặt" -> onNavigateToSection("Cài đặt")
                         "Hồ sơ" -> onNavigateToSection("Hồ sơ")
                     }
                 },
@@ -373,10 +373,10 @@ private fun HistoryBottomNavigation(
                 }
 
                 NavigationItem(
-                    title = "Công cụ",
+                    title = "Cài đặt",
                     iconRes = R.drawable.tdesign_tools_circle,
-                    isSelected = currentTab == "Công cụ",
-                    onClick = { onTabSelected("Công cụ") }
+                    isSelected = currentTab == "Cài đặt",
+                    onClick = { onTabSelected("Cài đặt") }
                 )
 
                 NavigationItem(

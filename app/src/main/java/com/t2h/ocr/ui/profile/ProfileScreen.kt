@@ -159,7 +159,7 @@ fun ProfileScreen(
                     when (tabName) {
                         "Trang chủ" -> onNavigateToHome()
                         "Tệp" -> onNavigateToHistory()
-                        "Công cụ" -> onNavigateToSettings()
+                        "Cài đặt" -> onNavigateToSettings()
                         "Hồ sơ" -> { /* Đang ở chính màn này, không xử lý lại */ }
                     }
                 },
@@ -497,10 +497,10 @@ private fun ProfileBottomNavigation(
                 }
 
                 NavigationItem(
-                    title = "Công cụ",
+                    title = "Cài đặt",
                     iconRes = R.drawable.tdesign_tools_circle,
-                    isSelected = currentTab == "Công cụ",
-                    onClick = { onTabSelected("Công cụ") }
+                    isSelected = currentTab == "Cài đặt",
+                    onClick = { onTabSelected("Cài đặt") }
                 )
 
                 NavigationItem(
