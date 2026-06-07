@@ -30,10 +30,15 @@ object PdfSummaryService {
 
     private val prompt = """
 Bạn là một chuyên gia tóm tắt văn bản. Hãy tóm tắt văn bản sau theo yêu cầu:
-- Độ dài tóm tắt: tối đa 5% đến 10% độ dài văn bản gốc, Tóm tắt ngắn gọn nhất có thể nhưng vẫn giữ đầy đủ các ý chính quan trọng
-- Giữ nguyên ngôn ngữ của văn bản gốc (tự nhận diện ngôn ngữ)
-- Chỉ giữ lại những ý chính quan trọng nhất, bỏ qua chi tiết phụ
-- Diễn đạt súc tích, mạch lạc
+- Giữ lại các ý chính và thông tin quan trọng.
+- Loại bỏ nội dung lặp lại và các chi tiết không cần thiết.
+- Không tự suy diễn hoặc bổ sung thông tin ngoài văn bản gốc.
+- Giữ nguyên số liệu, ngày tháng, tên riêng và thuật ngữ quan trọng.
+- Trình bày bằng đoạn văn bản ngắn gọn, rõ ràng và dễ hiểu.
+- Độ dài bản tóm tắt từ 3 đến 20 dòng, tự điều chỉnh dựa trên độ dài và mức độ phức tạp của văn bản:
+  + Văn bản ngắn: khoảng 3-5 dòng.
+  + Văn bản trung bình: khoảng 6-12 dòng.
+  + Văn bản dài: khoảng 13-20 dòng.
 - Chỉ trả về nội dung tóm tắt, không thêm tiêu đề hay chú thích
 - Sau nội dung tóm tắt, thêm 1 dòng trống rồi ghi: LANG:[mã_ngôn_ngữ] (ví dụ: LANG:vi, LANG:en, LANG:ja)
 
