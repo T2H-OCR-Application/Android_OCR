@@ -101,20 +101,20 @@ fun ProfileScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)), // Màu đỏ cảnh báo nguy hiểm
                     shape = RoundedCornerShape(8.dp),
                     onClick = {
-                        showLogoutDialog = false
+                        showLogoutDialog = false // Đóng Dialog trước khi chuyển tiếp
 
-                        // 1. Đăng xuất khỏi Firebase Auth
+                        // 1. Đăng xuất hoàn toàn khỏi Firebase Auth
                         FirebaseAuth.getInstance().signOut()
 
-                        // 2. Clear Credential Manager state + tạo lại phiên ẩn danh mới
+                        // 2. Clear Credential Manager state
                         scope.launch {
                             try { credentialManager.clearCredentialState(androidx.credentials.ClearCredentialStateRequest()) } catch (_: Exception) {}
-                            // Tạo lại anonymous session — currentUser flow tự cập nhật UI
-                            authRepository.signInAnonymously()
                         }
 
                         Toast.makeText(context, "Đã đăng xuất thành công", Toast.LENGTH_SHORT).show()
-                        // Không điều hướng — ở lại ProfileScreen, UI tự refresh qua currentUser flow
+
+                        // 3. Kích hoạt callback điều hướng lọt về màn đăng nhập trong MainActivity
+                        onLogoutSuccess()
                     }
                 ) {
                     Text("Đăng xuất", color = Color.White, fontWeight = FontWeight.SemiBold)
